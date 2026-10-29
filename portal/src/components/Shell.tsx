@@ -48,7 +48,7 @@ export function Shell({ children }: { children: ReactNode }) {
             className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-accent"
             onClick={async () => {
               await logout().catch(() => undefined);
-              window.location.assign("/staff");
+              window.location.assign("/login");
             }}
           >
             <LogOut className="size-4" />

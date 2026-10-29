@@ -5,6 +5,8 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 from frappe.permissions import add_permission, update_permission_property
 
+from staffdock.staffdock.doctype.staffdock_settings import staffdock_settings
+
 RETURN_CONDITIONS = "\nGood\nMinor Wear\nDamaged\nNeeds Repair\nLost\nRetired"
 
 # Staff roles without desk access: these users only ever see the /staff portal.
@@ -19,6 +21,7 @@ def after_migrate():
 	setup_inventory_request_workflow()
 	setup_asset_movement_workflow()
 	setup_notifications()
+	staffdock_settings.sync_branding()
 	# Desk is only for HR/admins; they land on the apps grid (staff never reach desk)
 	frappe.db.set_single_value("System Settings", "default_app", "")
 	frappe.db.set_single_value("Website Settings", "disable_signup", 1)

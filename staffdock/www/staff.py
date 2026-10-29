@@ -15,6 +15,4 @@ def get_context(context):
 	context.version = int(os.path.getmtime(bundle)) if os.path.exists(bundle) else 0
 	context.title = settings.app_title
 	context.logo = settings.logo
-	context.boot = frappe.as_json(
-		{"title": settings.app_title, "logo": settings.logo, "email_domain": settings.email_domain}
-	)
+	context.boot = frappe.as_json({"title": settings.app_title, "logo": settings.logo})

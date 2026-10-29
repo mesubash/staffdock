@@ -4,16 +4,12 @@
 declare global {
   interface Window {
     csrf_token?: string;
-    staffdock?: { title: string; logo: string; email_domain: string };
+    staffdock?: { title: string; logo: string };
   }
 }
 
-/** Branding and sign-in domain from StaffDock Settings (injected by www/staff.html). */
-export const BRAND = window.staffdock ?? {
-  title: "StaffDock",
-  logo: "/assets/staffdock/images/logo.svg",
-  email_domain: "",
-};
+/** Branding from StaffDock Settings (injected by www/staff.html). */
+export const BRAND = window.staffdock ?? { title: "StaffDock", logo: "/assets/staffdock/images/logo.svg" };
 
 export class ApiError extends Error {
   constructor(
@@ -107,12 +103,6 @@ export function applyAction(doc: unknown, action: string) {
 }
 
 // --- Session
-
-export async function login(username: string, password: string) {
-  const name = username.trim();
-  const usr = name.includes("@") || !BRAND.email_domain ? name : `${name}@${BRAND.email_domain}`;
-  await request("/api/method/login", { method: "POST", body: JSON.stringify({ usr, pwd: password }) });
-}
 
 export async function logout() {
   await request("/api/method/logout", { method: "POST" });

@@ -7,7 +7,8 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 
 ## Features
 
-- **Staff portal** (`/staff`): sign in with just a username, see what's waiting on you, nothing else.
+- **Staff portal** (`/staff`): see what's waiting on you, nothing else. Sign-in uses Frappe's own login
+  (password reset, 2FA, and "Sign in with …" through any OAuth/OIDC provider via Social Login Keys).
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
 - **Assets**: issue company property to an employee, they confirm receipt, receive it back with its condition.
 - **Inventory**: review and issue requests, stock levels, receive stock.
@@ -35,9 +36,15 @@ so stock and asset history stay in ERPNext's ledgers.
 
 | Setting | Effect |
 |---|---|
-| App Name, Logo | Portal header, sign-in page, browser tab |
-| Company Email Domain | Only accounts on this domain; staff type just the username |
+| App Name, Logo | Sign-in page, portal header, browser tab |
+| Company Email Domain | Only accounts on this email domain can be created |
 | Default Store | Warehouse used for requests, issues and receipts |
+
+## Single sign-on
+
+StaffDock has no login code of its own. To let staff sign in with Google, Microsoft or your own
+identity provider, add a **Social Login Key** in desk (any standard OAuth 2.0 / OpenID Connect provider);
+the button appears on the sign-in page.
 
 ## Install
 
@@ -82,7 +89,7 @@ bench start
 ```
 
 The seed runs the setup wizard (Acme Corp) and creates one demo user per role:
-`emma` (employee), `max` (her manager), `ian` (inventory), `olivia` (another team), `hana` (HR), all `@example.com`.
+`emma@example.com` (employee), `max@` (her manager), `ian@` (inventory), `olivia@` (another team), `hana@` (HR).
 
 Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk
 

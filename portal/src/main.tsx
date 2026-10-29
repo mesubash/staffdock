@@ -12,14 +12,16 @@ import { Approvals } from "@/pages/Approvals";
 import { MyAssets } from "@/pages/Assets";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
-import { Login } from "@/pages/Login";
 import { RequestDetail, RequestNew, RequestsList } from "@/pages/Requests";
 
 function Root() {
-  // A failed `me` call means there is no session: show the sign-in screen on any route.
+  // A failed `me` call means there is no session: use Frappe's sign-in page, then come back here.
   const me = useQuery({ queryKey: ["me"], queryFn: () => call<Me>("staffdock.api.me"), retry: false });
-  if (me.isLoading) return null;
-  if (!me.data) return <Login />;
+  if (me.isError) {
+    window.location.assign(`/login?${new URLSearchParams({ "redirect-to": window.location.pathname })}`);
+    return null;
+  }
+  if (!me.data) return null;
   return (
     <MeContext.Provider value={me.data}>
       <Shell>

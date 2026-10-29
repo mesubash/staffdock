@@ -3,7 +3,12 @@
  "creation": "2026-10-29 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["app_title", "logo", "email_domain", "default_warehouse"],
+ "field_order": [
+  "app_title",
+  "logo",
+  "email_domain",
+  "default_warehouse"
+ ],
  "fields": [
   {
    "default": "StaffDock",
@@ -13,13 +18,13 @@
    "reqd": 1
   },
   {
-   "description": "Shown in the staff portal header and sign-in page.",
+   "description": "Shown on the sign-in page and the staff portal.",
    "fieldname": "logo",
    "fieldtype": "Attach Image",
    "label": "Logo"
   },
   {
-   "description": "Only accounts on this domain can be created, and staff sign in with just their username. Leave empty to allow any email.",
+   "description": "Only accounts on this email domain can be created. Leave empty to allow any email.",
    "fieldname": "email_domain",
    "fieldtype": "Data",
    "label": "Company Email Domain"
@@ -34,7 +39,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-10-29 00:00:00.000000",
+ "modified": "2026-10-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "StaffDock",
  "name": "StaffDock Settings",

@@ -78,6 +78,10 @@ WORKFLOW = "/api/method/frappe.model.workflow.apply_workflow"
 
 hana = Session("hana@example.com")
 
+# --- Sign-in is Frappe's own page, branded from StaffDock Settings
+login_page = urllib.request.urlopen(BASE + "/login").read().decode()
+assert "/assets/staffdock/images/logo.svg" in login_page, "login page must carry the StaffDock logo"
+
 # --- Staff are portal-only: desk and site home send them to /staff; HR keeps desk
 for s in (emma, max, ian, olivia):
 	for path in ("/", "/desk", "/desk/material-request", "/login"):

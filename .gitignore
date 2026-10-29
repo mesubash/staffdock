@@ -1,0 +1,8 @@
+development/
+.env
+.DS_Store
+__pycache__/
+*.pyc
+*.egg-info/
+node_modules/
+staffdock/public/portal/

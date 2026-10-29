@@ -1,0 +1,366 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+/*
+ * Auth, /help and /legal pages render inside [data-theme="light"] and stay light
+ * regardless of the OS setting; everything else keeps following prefers-color-scheme.
+ * Keep this in step with the dark-token media query below.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not(:has([data-theme="light"])) *) {
+      @slot;
+    }
+  }
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and dark-mode media-query blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and the dark-mode media query
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-dark: var(--brand-orange-dark);
+  --color-field: var(--field);
+  --color-canvas: var(--canvas);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  color-scheme: light;
+  /*
+   * Default StaffDock palette:
+   * deep navy for primary actions and text, brand orange as the accent. Pages stay
+   * plain white; cards are set off by border and shadow.
+   */
+  /* Deep navy (#1F3750), the primary color. */
+  --brand: oklch(0.33 0.054 250.7);
+  --brand-foreground: oklch(1 0 0);
+  /* Charcoal (#152535): the pressed/hover shade of the navy. */
+  --brand-hover: oklch(0.258 0.037 249.4);
+  /*
+   * Brand orange (#D66700) is 3.6:1 on white: fine for focus rings, indicators and
+   * icons, too light for text. Orange text uses the darker #B55800 (4.8:1).
+   */
+  --brand-orange: oklch(0.636 0.165 51.4);
+  --brand-orange-dark: oklch(0.564 0.144 52.4);
+  /* Resting fill for text fields, and the plain white canvas behind cards. */
+  --field: oklch(0.975 0.004 250);
+  --canvas: oklch(1 0 0);
+
+  --radius: 0.5rem;
+  --background: oklch(1 0 0);
+  --foreground: var(--brand);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--brand);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--brand);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: oklch(0.984 0.002 247.8);
+  --secondary-foreground: var(--brand);
+  --muted: oklch(0.968 0.007 247.9);
+  /* Slate (hsl 211 20%) at 44%, so it holds 4.5:1 on muted fills too. */
+  --muted-foreground: oklch(0.535 0.045 250.4);
+  /* A quiet hover surface (shadcn's sense of --accent). */
+  --accent: oklch(0.968 0.007 247.9);
+  --accent-foreground: var(--brand);
+  /* Brand alert (#CC0F00). */
+  --destructive: oklch(0.535 0.214 30);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.921 0.009 249.7);
+  --input: oklch(0.888 0.013 249.8);
+  --ring: var(--brand-orange);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.984 0.003 247.858);
+  --sidebar-foreground: oklch(0.129 0.042 264.695);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: oklch(0.968 0.007 247.896);
+  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: var(--brand);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(:has([data-theme="light"])) {
+    color-scheme: dark;
+    --brand: oklch(0.66 0.11 232);
+    --brand-foreground: oklch(0.16 0.01 250);
+    --brand-hover: oklch(0.72 0.1 232);
+    --brand-orange: oklch(0.7 0.16 52);
+    --brand-orange-dark: oklch(0.76 0.14 55);
+    --field: oklch(0.21 0.005 250);
+    --canvas: oklch(0.16 0.005 250);
+
+    --background: oklch(0.16 0.005 250);
+    --foreground: oklch(0.95 0.002 250);
+    --card: oklch(0.19 0.005 250);
+    --card-foreground: oklch(0.95 0.002 250);
+    --popover: oklch(0.19 0.005 250);
+    --popover-foreground: oklch(0.95 0.002 250);
+    --primary: var(--brand);
+    --primary-foreground: var(--brand-foreground);
+    --secondary: oklch(0.25 0.005 250);
+    --secondary-foreground: oklch(0.95 0.002 250);
+    --muted: oklch(0.25 0.005 250);
+    --muted-foreground: oklch(0.72 0.008 250);
+    --accent: oklch(0.26 0.006 250);
+    --accent-foreground: oklch(0.95 0.002 250);
+    --destructive: oklch(0.65 0.17 25);
+    --destructive-foreground: oklch(0.16 0.01 250);
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 18%);
+    --ring: var(--brand-orange);
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.19 0.005 250);
+    --sidebar-foreground: oklch(0.95 0.002 250);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--brand-foreground);
+    --sidebar-accent: oklch(0.26 0.006 250);
+    --sidebar-accent-foreground: oklch(0.95 0.002 250);
+    --sidebar-border: oklch(1 0 0 / 12%);
+    --sidebar-ring: var(--brand);
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /*
+   * Browsers otherwise paint saved credentials with their own light-blue
+   * autofill background, which breaks contrast in dark mode. A field wrapper can
+   * set --autofill-bg so autofilled text keeps the field's own fill.
+   */
+  input:autofill,
+  input:autofill:hover,
+  input:autofill:active,
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:active {
+    color: var(--color-foreground) !important;
+    caret-color: var(--color-foreground);
+    -webkit-text-fill-color: var(--color-foreground) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--autofill-bg, var(--color-card)) inset !important;
+    box-shadow: 0 0 0 1000px var(--autofill-bg, var(--color-card)) inset !important;
+  }
+
+  input:autofill:focus,
+  input:-webkit-autofill:focus {
+    color: var(--color-foreground) !important;
+    caret-color: var(--color-foreground);
+    -webkit-text-fill-color: var(--color-foreground) !important;
+    -webkit-box-shadow:
+      0 0 0 1000px var(--autofill-bg, var(--color-card)) inset,
+      0 0 0 3px color-mix(in oklch, var(--color-ring) 15%, transparent) !important;
+    box-shadow:
+      0 0 0 1000px var(--autofill-bg, var(--color-card)) inset,
+      0 0 0 3px color-mix(in oklch, var(--color-ring) 15%, transparent) !important;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-orange);
+    color: var(--brand-foreground);
+  }
+}
+
+/* Long-form policy text on the /legal pages (headings, lists, links, inline code). */
+@layer components {
+  .legal-prose {
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    color: color-mix(in oklch, var(--color-foreground) 86%, var(--color-muted-foreground));
+  }
+
+  .legal-prose h2 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--color-foreground);
+    text-wrap: balance;
+  }
+
+  .legal-prose h3 {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .legal-prose p,
+  .legal-prose ul,
+  .legal-prose ol {
+    margin-top: 0.875rem;
+  }
+
+  .legal-prose ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .legal-prose ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+  }
+
+  .legal-prose li + li {
+    margin-top: 0.5rem;
+  }
+
+  .legal-prose li::marker {
+    color: var(--color-brand-orange);
+  }
+
+  .legal-prose strong {
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .legal-prose a {
+    font-weight: 500;
+    color: var(--color-brand-orange-dark);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--color-brand-orange-dark) 35%, transparent);
+    text-underline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .legal-prose a:hover {
+    text-decoration-color: var(--color-brand-orange-dark);
+  }
+
+  .legal-prose a:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  .legal-prose code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85em;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.375rem;
+    background-color: var(--color-muted);
+    color: var(--color-foreground);
+    overflow-wrap: anywhere;
+  }
+}
+
+@layer utilities {
+  @keyframes otp-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-6px);
+    }
+    40% {
+      transform: translateX(6px);
+    }
+    60% {
+      transform: translateX(-4px);
+    }
+    80% {
+      transform: translateX(4px);
+    }
+  }
+
+  .animate-otp-shake {
+    animation: otp-shake 220ms ease-in-out;
+  }
+}

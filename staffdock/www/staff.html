@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" href="{{ logo }}" />
+		<title>{{ title }}</title>
+		<link rel="stylesheet" href="/assets/staffdock/portal/portal.css?v={{ version }}" />
+	</head>
+	<body data-theme="light">
+		<div id="root"></div>
+		<script>
+			window.csrf_token = "{{ csrf_token }}";
+			window.staffdock = {{ boot }};
+		</script>
+		<script type="module" src="/assets/staffdock/portal/portal.js?v={{ version }}"></script>
+	</body>
+</html>

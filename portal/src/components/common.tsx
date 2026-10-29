@@ -1,0 +1,75 @@
+import type { ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
+
+export function Page({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {actions}
+      </div>
+      <div className="flex flex-col gap-6">{children}</div>
+    </div>
+  );
+}
+
+export function Card({ title, children, className }: { title?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <section className={cn("rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.04)]", className)}>
+      {title ? <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">{title}</h2> : null}
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+export function Empty({ children }: { children: ReactNode }) {
+  return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
+}
+
+export function ErrorText({ error }: { error: unknown }) {
+  if (!error) return null;
+  return (
+    <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+      {error instanceof Error ? error.message : String(error)}
+    </p>
+  );
+}
+
+const STATE_STYLE: Record<string, string> = {
+  Draft: "bg-muted text-muted-foreground",
+  "Pending Manager Approval": "bg-amber-100 text-amber-800",
+  "Pending Inventory Review": "bg-amber-100 text-amber-800",
+  "Pending Acknowledgement": "bg-amber-100 text-amber-800",
+  "Manager Rejected": "bg-red-100 text-red-800",
+  "Inventory Rejected": "bg-red-100 text-red-800",
+  Approved: "bg-blue-100 text-blue-800",
+  Issued: "bg-blue-100 text-blue-800",
+  Completed: "bg-green-100 text-green-800",
+  Acknowledged: "bg-green-100 text-green-800",
+};
+
+/** Employee-facing wording for workflow states. */
+export function stateLabel(state: string, status?: string) {
+  if (state === "Approved" && status === "Issued") return "Issued";
+  if (state === "Approved") return "Approved, waiting for issue";
+  return state;
+}
+
+export function StatusBadge({ state, status }: { state: string; status?: string }) {
+  const label = stateLabel(state, status);
+  const key = state === "Approved" && status === "Issued" ? "Issued" : state;
+  return (
+    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", STATE_STYLE[key] ?? "bg-muted")}>
+      {label}
+    </span>
+  );
+}
+
+export function formatDate(value?: string) {
+  if (!value) return "";
+  return new Date(value.replace(" ", "T")).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+export const selectClass =
+  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";

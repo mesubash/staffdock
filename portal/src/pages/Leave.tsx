@@ -52,10 +52,16 @@ export function Leave() {
   const summary = useQuery({ queryKey: ["leave"], queryFn: () => call<Summary>("staffdock.api.leave_summary") });
   const done = () => queryClient.invalidateQueries();
   const withdraw = useMutation({ mutationFn: (name: string) => call("staffdock.api.withdraw_leave", { name }), onSuccess: done });
+  const [applying, setApplying] = useState(false);
 
   const s = summary.data;
   return (
-    <Page title="Leave">
+    <Page
+      title="Leave"
+      actions={
+        s?.balances.some((b) => b.remaining > 0) && !applying ? <Button onClick={() => setApplying(true)}>Apply for leave</Button> : null
+      }
+    >
       <ErrorText error={summary.error} />
       {s && s.balances.length === 0 ? (
         <Card>
@@ -76,7 +82,18 @@ export function Leave() {
         </div>
       ) : null}
 
-      {s?.balances.length ? <ApplyForm types={s.balances.filter((b) => b.remaining > 0).map((b) => b.leave_type)} onDone={done} /> : null}
+      {s?.balances.length ? (
+        applying ? (
+          <ApplyForm
+            types={s.balances.filter((b) => b.remaining > 0).map((b) => b.leave_type)}
+            onDone={() => {
+              setApplying(false);
+              done();
+            }}
+            onCancel={() => setApplying(false)}
+          />
+        ) : null
+      ) : null}
 
       <Card title="My leave">
         <ErrorText error={withdraw.error} />
@@ -105,7 +122,7 @@ export function Leave() {
   );
 }
 
-function ApplyForm({ types, onDone }: { types: string[]; onDone: () => void }) {
+function ApplyForm({ types, onDone, onCancel }: { types: string[]; onDone: () => void; onCancel: () => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const empty = { leave_type: types[0] ?? "", from_date: today, to_date: today, half_day: false, reason: "" };
   const [form, setForm] = useState(empty);
@@ -168,9 +185,12 @@ function ApplyForm({ types, onDone }: { types: string[]; onDone: () => void }) {
           <Input id="leave-reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="e.g. Family event" />
         </div>
         <ErrorText error={apply.error} />
-        <div>
+        <div className="flex gap-2">
           <Button type="submit" disabled={!valid || apply.isPending}>
             {apply.isPending ? "Sending…" : "Apply"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
           </Button>
         </div>
       </form>

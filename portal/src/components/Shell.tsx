@@ -1,18 +1,19 @@
 import { Link } from "@tanstack/react-router";
-import { LogOut, Settings } from "lucide-react";
-import type { ReactNode } from "react";
+import { LogOut, Menu, Settings, X } from "lucide-react";
+import { type ReactNode, useState } from "react";
 
 import { BRAND, logout } from "@/lib/api";
 import { useMe } from "@/lib/session";
 
 export function Shell({ children }: { children: ReactNode }) {
   const me = useMe();
+  const [menuOpen, setMenuOpen] = useState(false);
   const nav = [
     { to: "/", label: "Home", show: true },
-    { to: "/requests", label: "Requests", show: true },
     { to: "/attendance", label: "Attendance", show: true },
     { to: "/leave", label: "Leave", show: true },
-    { to: "/assets", label: "My Assets", show: true },
+    { to: "/requests", label: "Requests", show: true },
+    { to: "/assets", label: "Assets", show: true },
     { to: "/approvals", label: "Approvals", show: me.is_manager || me.is_leave_approver },
     { to: "/inventory", label: "Inventory", show: me.is_inventory },
   ].filter((n) => n.show);
@@ -25,7 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <img src={BRAND.logo} alt="" className="size-7" />
             <span className="hidden sm:inline">{BRAND.title}</span>
           </Link>
-          <nav className="flex flex-1 gap-1 overflow-x-auto">
+          <nav className="hidden flex-1 gap-1 md:flex">
             {nav.map((n) => (
               <Link
                 key={n.to}
@@ -38,6 +39,15 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
+          <div className="flex-1 md:hidden" />
+          <button
+            type="button"
+            aria-expanded={menuOpen}
+            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent md:hidden"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />} Menu
+          </button>
           {me.has_desk ? (
             <a href="/desk" title="Admin console" className="rounded-md p-2 text-muted-foreground hover:bg-accent">
               <Settings className="size-4" />
@@ -57,6 +67,22 @@ export function Shell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
+      {menuOpen ? (
+        <nav className="border-b border-border bg-card px-4 py-2 md:hidden">
+          {nav.map((n) => (
+            <Link
+              key={n.to}
+              to={n.to}
+              onClick={() => setMenuOpen(false)}
+              activeOptions={{ exact: n.to === "/" }}
+              className="block rounded-md px-3 py-2.5 text-sm text-muted-foreground hover:bg-accent"
+              activeProps={{ className: "bg-accent font-medium text-foreground" }}
+            >
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
       <main className="flex-1">{children}</main>
     </div>
   );

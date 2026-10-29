@@ -96,6 +96,11 @@ assert not me["is_inventory"] and not me["has_desk"] and me["employee"]["employe
 assert max.api("me")["is_manager"] and ian.api("me")["is_inventory"]
 assert not emma.ok("POST", "/api/method/staffdock.api.stock_levels", {}), "employee must not see stock levels"
 
+# Close approved-but-unissued test requests left by earlier runs
+for r in ian.api("my_tasks")["to_issue"]:
+	if (r["sd_reason"] or "").startswith("e2e"):
+		ian.act("Material Request", r["name"], "Close")
+
 # --- Inventory request: employee -> manager -> inventory -> issue -> acknowledge
 mr = emma.call(
 	"POST",
@@ -183,6 +188,10 @@ try:
 	raise AssertionError("over-issue must fail")
 except urllib.error.HTTPError as err:
 	assert "needed" in err.msg, err.msg
+assert [t["action"] for t in emma.call("POST", "/api/method/frappe.model.workflow.get_transitions", {"doc": emma.get("Material Request", big["name"])})] == [], "only inventory closes"
+assert ian.act("Material Request", big["name"], "Close")["workflow_state"] == "Closed"
+assert all(r["name"] != big["name"] for r in ian.api("my_tasks")["to_issue"]), "closed request leaves the issue queue"
+assert eventually_updated(emma, f"Your request {big['name']} was closed")
 
 # --- Receive stock
 ian.api("receive_stock", item_code="A4-PAPER", qty=5, rate=650)

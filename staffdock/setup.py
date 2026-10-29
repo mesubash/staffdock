@@ -207,6 +207,7 @@ def setup_inventory_request_workflow():
 		("Inventory Rejected", 0, INVENTORY, "Danger"),
 		("Approved", 1, INVENTORY, "Primary"),
 		("Completed", 1, INVENTORY, "Success"),
+		("Closed", 1, INVENTORY, ""),
 	]
 	approver = "doc.sd_approver == frappe.session.user"
 	# (from, action, to, role, condition, allow_self_approval)
@@ -218,6 +219,8 @@ def setup_inventory_request_workflow():
 		("Pending Inventory Review", "Approve", "Approved", INVENTORY, None, 0),
 		("Pending Inventory Review", "Reject", "Inventory Rejected", INVENTORY, None, 0),
 		("Approved", "Acknowledge Receipt", "Completed", "Employee", f"{OWNER} and doc.status == 'Issued'", 1),
+		# Approved but can't (or won't) be fulfilled, e.g. out of stock: inventory closes it
+		("Approved", "Close", "Closed", INVENTORY, "doc.status != 'Issued'", 0),
 	]
 	_workflow("Inventory Request", "Material Request", states, transitions)
 
@@ -261,9 +264,9 @@ def setup_notifications():
 		(
 			"Request Decision",
 			"workflow_state",
-			"doc.workflow_state in ('Manager Rejected', 'Inventory Rejected', 'Approved')",
+			"doc.workflow_state in ('Manager Rejected', 'Inventory Rejected', 'Approved', 'Closed')",
 			{"receiver_by_document_field": "owner"},
-			"Your request {{ doc.name }} was {{ 'rejected' if 'Rejected' in doc.workflow_state else 'approved' }}",
+			"Your request {{ doc.name }} was {{ 'rejected' if 'Rejected' in doc.workflow_state else doc.workflow_state | lower }}",
 		),
 		(
 			"Request Issued",

@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { CalendarPlus, ChevronRight, Plus } from "lucide-react";
 
 import { Card, Empty, ErrorText, Page, StatusBadge, formatDate } from "@/components/common";
+import { Button } from "@/components/ui/button";
 import { call, type Tasks } from "@/lib/api";
 import { CheckInCard } from "@/pages/Attendance";
 import { leaveDates } from "@/pages/Leave";
@@ -69,19 +70,29 @@ export function Home() {
     : [];
 
   return (
-    <Page title={`${greeting()}, ${me.full_name.split(" ")[0]}`}>
+    <Page
+      title={`${greeting()}, ${me.full_name.split(" ")[0]}`}
+      actions={
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/leave">
+              <CalendarPlus /> Apply for leave
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/requests/new">
+              <Plus /> Request items
+            </Link>
+          </Button>
+        </div>
+      }
+    >
       {me.employee ? <CheckInCard /> : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Waiting on you" value={items.length} />
-        <Stat label="My open requests" value={t?.open_requests} to="/requests" />
-        <Stat label="Assets with me" value={t?.my_assets} to="/assets" />
-      </div>
-
-      <Card title="Needs your attention">
+      <Card title={items.length ? `Needs your attention (${items.length})` : "Needs your attention"}>
         <ErrorText error={tasks.error} />
         {tasks.isLoading ? <Empty>Loading…</Empty> : null}
-        {t && items.length === 0 ? <Empty>Nothing waiting on you.</Empty> : null}
+        {t && items.length === 0 ? <Empty>You're all caught up.</Empty> : null}
         <ul className="divide-y divide-border">
           {items.map((i) => (
             <li key={i.key}>
@@ -99,36 +110,14 @@ export function Home() {
       </Card>
 
       <Updates />
-
-      <div>
-        <Link to="/requests/new" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-          + Request items or equipment
-        </Link>
-      </div>
     </Page>
-  );
-}
-
-function Stat({ label, value, to }: { label: string; value?: number; to?: string }) {
-  const body = (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value ?? "–"}</p>
-    </div>
-  );
-  return to ? (
-    <Link to={to} className="hover:opacity-90">
-      {body}
-    </Link>
-  ) : (
-    body
   );
 }
 
 type Update = { subject: string; document_type: string; document_name: string; creation: string };
 
 function Updates() {
-  const updates = useQuery({ queryKey: ["updates"], queryFn: () => call<Update[]>("staffdock.api.updates") });
+  const updates = useQuery({ queryKey: ["updates"], queryFn: () => call<Update[]>("staffdock.api.updates", { limit: 5 }) });
   if (!updates.data?.length) return null;
   return (
     <Card title="Recent updates">

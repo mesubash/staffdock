@@ -1,8 +1,12 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
+import { BRAND } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function Page({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+  useEffect(() => {
+    document.title = `${title} · ${BRAND.title}`;
+  }, [title]);
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -36,35 +40,56 @@ export function ErrorText({ error }: { error: unknown }) {
   );
 }
 
-const STATE_STYLE: Record<string, string> = {
-  Draft: "bg-muted text-muted-foreground",
-  "Pending Manager Approval": "bg-amber-100 text-amber-800",
-  "Pending Inventory Review": "bg-amber-100 text-amber-800",
-  "Pending Acknowledgement": "bg-amber-100 text-amber-800",
-  "Manager Rejected": "bg-red-100 text-red-800",
-  "Inventory Rejected": "bg-red-100 text-red-800",
-  Approved: "bg-blue-100 text-blue-800",
-  Issued: "bg-blue-100 text-blue-800",
-  Completed: "bg-green-100 text-green-800",
-  Acknowledged: "bg-green-100 text-green-800",
+// Workflow states in plain words, with a badge color. Unknown states fall back to their raw name.
+const STATES: Record<string, { label: string; tone: string }> = {
+  Draft: { label: "Draft", tone: "bg-muted text-muted-foreground" },
+  "Pending Manager Approval": { label: "With manager", tone: "bg-amber-100 text-amber-800" },
+  "Pending Inventory Review": { label: "With inventory", tone: "bg-amber-100 text-amber-800" },
+  "Pending Acknowledgement": { label: "To confirm", tone: "bg-amber-100 text-amber-800" },
+  Approved: { label: "Approved", tone: "bg-blue-100 text-blue-800" },
+  Issued: { label: "Issued", tone: "bg-blue-100 text-blue-800" },
+  Completed: { label: "Received", tone: "bg-green-100 text-green-800" },
+  Acknowledged: { label: "Confirmed", tone: "bg-green-100 text-green-800" },
+  "Manager Rejected": { label: "Rejected", tone: "bg-red-100 text-red-800" },
+  "Inventory Rejected": { label: "Rejected", tone: "bg-red-100 text-red-800" },
+  Closed: { label: "Closed", tone: "bg-muted text-muted-foreground" },
 };
 
-/** Employee-facing wording for workflow states. */
+function stateKey(state: string, status?: string) {
+  return state === "Approved" && status === "Issued" ? "Issued" : state;
+}
+
 export function stateLabel(state: string, status?: string) {
-  if (state === "Approved" && status === "Issued") return "Issued";
-  if (state === "Approved") return "Approved, waiting for issue";
-  return state;
+  const key = stateKey(state, status);
+  return STATES[key]?.label ?? key;
 }
 
 export function StatusBadge({ state, status }: { state: string; status?: string }) {
-  const label = stateLabel(state, status);
-  const key = state === "Approved" && status === "Issued" ? "Issued" : state;
+  const key = stateKey(state, status);
   return (
-    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", STATE_STYLE[key] ?? "bg-muted")}>
-      {label}
+    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", STATES[key]?.tone ?? "bg-muted")}>
+      {stateLabel(state, status)}
     </span>
   );
 }
+
+/** What a history entry means, from the state a request moved into. */
+export const HISTORY_LABELS: Record<string, string> = {
+  "Pending Manager Approval": "Sent for approval",
+  "Pending Inventory Review": "Approved by manager",
+  Approved: "Approved by inventory",
+  "Manager Rejected": "Rejected by manager",
+  "Inventory Rejected": "Rejected by inventory",
+  Completed: "Receipt confirmed",
+  Closed: "Closed by inventory",
+};
+
+/** Button text for workflow actions. */
+export const ACTION_LABELS: Record<string, string> = {
+  Submit: "Send for approval",
+  "Acknowledge Receipt": "I received the items",
+  Close: "Close request",
+};
 
 export function formatDate(value?: string) {
   if (!value) return "";

@@ -38,17 +38,26 @@ export function Inventory() {
 
 function RequestQueues() {
   const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => call<Tasks>("staffdock.api.my_tasks") });
+  const review = tasks.data?.to_review ?? [];
+  const issue = tasks.data?.to_issue ?? [];
   return (
     <>
       <ErrorText error={tasks.error} />
-      <Card title="To review">
-        {tasks.data?.to_review?.length === 0 ? <Empty>No requests waiting for review.</Empty> : null}
-        <RequestTable rows={tasks.data?.to_review ?? []} showRequester />
-      </Card>
-      <Card title="Approved, ready to issue">
-        {tasks.data?.to_issue?.length === 0 ? <Empty>Nothing to issue.</Empty> : null}
-        <RequestTable rows={tasks.data?.to_issue ?? []} showRequester />
-      </Card>
+      {tasks.data && !review.length && !issue.length ? (
+        <Card>
+          <Empty>Nothing to review or issue.</Empty>
+        </Card>
+      ) : null}
+      {review.length ? (
+        <Card title="To review">
+          <RequestTable rows={review} showRequester />
+        </Card>
+      ) : null}
+      {issue.length ? (
+        <Card title="Approved, ready to issue">
+          <RequestTable rows={issue} showRequester />
+        </Card>
+      ) : null}
     </>
   );
 }

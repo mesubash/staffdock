@@ -28,7 +28,7 @@ export function MyAssets() {
   const pending = tasks.data?.assets_to_acknowledge ?? [];
 
   return (
-    <Page title="My assets">
+    <Page title="Assets">
       {pending.length ? (
         <Card title="Please confirm you received these">
           <ErrorText error={acknowledge.error} />

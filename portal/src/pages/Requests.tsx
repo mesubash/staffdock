@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { Card, Empty, ErrorText, Page, StatusBadge, formatDate, selectClass } from "@/components/common";
+import { ACTION_LABELS, Card, Empty, ErrorText, HISTORY_LABELS, Page, StatusBadge, formatDate, selectClass } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 const ROW_FIELDS = ["name", "sd_employee_name", "sd_reason", "workflow_state", "status", "modified"];
-const CLOSED = ["Completed", "Manager Rejected", "Inventory Rejected"];
+const CLOSED = ["Completed", "Manager Rejected", "Inventory Rejected", "Closed"];
 
 export function RequestsList() {
   const me = useMe();
@@ -304,11 +304,11 @@ export function RequestDetail() {
             {actions.data?.map((t) => (
               <Button
                 key={t.action}
-                variant={/reject/i.test(t.action) ? "destructive" : canIssue ? "outline" : "default"}
+                variant={/reject/i.test(t.action) ? "destructive" : canIssue || t.action === "Close" ? "outline" : "default"}
                 disabled={act.isPending}
                 onClick={() => act.mutate(t.action)}
               >
-                {t.action === "Submit" ? "Send for approval" : t.action}
+                {ACTION_LABELS[t.action] ?? t.action}
               </Button>
             ))}
             {canDiscard ? (
@@ -356,7 +356,7 @@ function History({ doctype, name }: { doctype: string; name: string }) {
             <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary/60" />
             <div>
               <p>
-                <span className="font-medium">{e.text}</span>
+                <span className="font-medium">{HISTORY_LABELS[e.text] ?? e.text}</span>
                 <span className="text-muted-foreground"> · {e.by}</span>
               </p>
               <p className="text-xs text-muted-foreground">

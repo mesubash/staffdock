@@ -9,6 +9,7 @@ import http.cookiejar
 import json
 import pathlib
 import re
+import time
 import urllib.error
 import urllib.request
 
@@ -108,6 +109,7 @@ mr = emma.call(
 )
 name = mr["name"]
 assert mr["sd_approver"] == "max@example.com" and mr["sd_employee_name"] == "Emma Employee"
+assert mr["sd_approver_name"] == "Max Manager" and name.startswith("REQ-"), (name, mr["sd_approver_name"])
 
 bypass = emma.call(
 	"POST",
@@ -115,6 +117,9 @@ bypass = emma.call(
 	{"schedule_date": "2026-12-31", "items": [{"item_code": "A4-PAPER", "qty": 1, "warehouse": "Stores - AC", "schedule_date": "2026-12-31"}]},
 )
 assert not emma.ok("POST", "/api/method/frappe.client.submit", {"doc": emma.get("Material Request", bypass["name"])}), "must not skip workflow"
+assert not olivia.ok("POST", "/api/method/staffdock.api.discard_request", {"name": bypass["name"]}), "only the owner discards"
+emma.api("discard_request", name=bypass["name"])
+assert not emma.ok("GET", f"/api/resource/Material Request/{bypass['name']}"), "discarded draft is gone"
 
 assert emma.act("Material Request", name, "Submit")["workflow_state"] == "Pending Manager Approval"
 assert not emma.ok("POST", WORKFLOW, {"doc": emma.get("Material Request", name), "action": "Approve"}), "self-approval must fail"
@@ -148,6 +153,36 @@ rej = emma.call(
 )
 emma.act("Material Request", rej["name"], "Submit")
 assert max.act("Material Request", rej["name"], "Reject")["workflow_state"] == "Manager Rejected"
+assert emma.call("POST", "/api/method/frappe.model.workflow.get_transitions", {"doc": emma.get("Material Request", rej["name"])}) == [], "rejection is final"
+assert not emma.ok("POST", "/api/method/staffdock.api.discard_request", {"name": rej["name"]}), "sent requests cannot be discarded"
+
+# --- Updates feed tells each person what happened (notifications are written after commit)
+def eventually_updated(session, text):
+	for _ in range(20):
+		if any(text in u["subject"] for u in session.api("updates", limit=50)):
+			return True
+		time.sleep(0.5)
+	return False
+
+
+assert eventually_updated(max, f"Emma Employee needs your approval for {name}")
+assert eventually_updated(emma, f"Items for {name} were issued")
+assert eventually_updated(emma, f"Your request {rej['name']} was rejected")
+
+# --- Issuing more than is in stock fails with a readable message
+big = emma.call(
+	"POST",
+	"/api/resource/Material Request",
+	{"schedule_date": "2026-12-31", "sd_reason": "e2e too many", "items": [{"item_code": "OXYGEN-BOTTLE", "qty": 999, "warehouse": "Stores - AC", "schedule_date": "2026-12-31"}]},
+)
+emma.act("Material Request", big["name"], "Submit")
+max.act("Material Request", big["name"], "Approve")
+ian.act("Material Request", big["name"], "Approve")
+try:
+	ian.api("issue_request", name=big["name"])
+	raise AssertionError("over-issue must fail")
+except urllib.error.HTTPError as err:
+	assert "needed" in err.msg, err.msg
 
 # --- Receive stock
 ian.api("receive_stock", item_code="A4-PAPER", qty=5, rate=650)
@@ -156,12 +191,14 @@ ian.api("receive_stock", item_code="A4-PAPER", qty=5, rate=650)
 emma_emp = me["employee"]["name"]
 free = [a["name"] for a in ian.call("GET", "/api/resource/Asset?fields=" + urllib.request.quote('["name","custodian"]') + "&filters=" + urllib.request.quote('{"docstatus":1}') + "&limit_page_length=50") if not a["custodian"]]
 asset = free[0]
+assert asset.startswith("AST-"), asset
 assert not emma.ok("POST", "/api/method/staffdock.api.issue_asset", {"asset": asset, "employee": emma_emp}), "employee must not issue assets"
 move = ian.api("issue_asset", asset=asset, employee=emma_emp)
 assert asset in emma.names("Asset"), "employee must see own asset"
 assert asset not in olivia.names("Asset"), "others must not see asset"
 assert any(t["name"] == move for t in emma.api("my_tasks")["assets_to_acknowledge"])
 assert not olivia.ok("POST", WORKFLOW, {"doc": ian.get("Asset Movement", move), "action": "Acknowledge Receipt"}), "only receiver acknowledges"
+assert eventually_updated(emma, "was assigned to you. Please confirm you received it")
 assert emma.act("Asset Movement", move, "Acknowledge Receipt")["workflow_state"] == "Acknowledged"
 
 ret = ian.api("receive_asset", asset=asset, condition="Minor Wear")

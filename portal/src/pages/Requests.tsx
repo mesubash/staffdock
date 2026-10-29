@@ -12,7 +12,7 @@ import { useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 const ROW_FIELDS = ["name", "sd_employee_name", "sd_reason", "workflow_state", "status", "modified"];
-const CLOSED = ["Completed", "Inventory Rejected"];
+const CLOSED = ["Completed", "Manager Rejected", "Inventory Rejected"];
 
 export function RequestsList() {
   const me = useMe();
@@ -214,7 +214,9 @@ export function RequestNew() {
 
 type RequestDoc = RequestRow & {
   owner: string;
+  docstatus: number;
   sd_approver?: string;
+  sd_approver_name?: string;
   schedule_date: string;
   transaction_date: string;
   per_ordered: number;
@@ -235,11 +237,21 @@ export function RequestDetail() {
   const done = () => queryClient.invalidateQueries();
   const act = useMutation({ mutationFn: (action: string) => applyAction(doc.data, action), onSuccess: done });
   const issue = useMutation({ mutationFn: () => call("staffdock.api.issue_request", { name }), onSuccess: done });
+  const navigate = useNavigate();
+  const discard = useMutation({
+    mutationFn: () => call("staffdock.api.discard_request", { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      navigate({ to: "/requests" });
+    },
+  });
 
   if (doc.error) return <Page title={name}><ErrorText error={doc.error} /></Page>;
   if (!doc.data) return <Page title={name}><Empty>Loading…</Empty></Page>;
   const d = doc.data;
   const canIssue = me.is_inventory && d.workflow_state === "Approved" && d.status !== "Issued";
+  const canDiscard = d.owner === me.user && d.docstatus === 0 && (!d.workflow_state || d.workflow_state === "Draft");
+  const waitingFor = waitingOn(d, me.user);
 
   return (
     <Page title={`Request ${d.name}`} actions={<StatusBadge state={d.workflow_state} status={d.status} />}>
@@ -250,6 +262,11 @@ export function RequestDetail() {
           <Field label="Needed by" value={formatDate(d.schedule_date)} />
           <Field label="Reason" value={d.sd_reason} />
         </dl>
+        {waitingFor ? (
+          <p className="mt-4 rounded-md bg-muted px-3 py-2 text-sm">
+            Waiting for <span className="font-medium">{waitingFor}</span>
+          </p>
+        ) : null}
       </Card>
 
       <Card title="Items">
@@ -275,11 +292,9 @@ export function RequestDetail() {
         </table>
       </Card>
 
-      <History doctype="Material Request" name={d.name} />
-
-      {actions.data?.length || canIssue ? (
+      {actions.data?.length || canIssue || canDiscard ? (
         <Card title="What would you like to do?">
-          <ErrorText error={act.error ?? issue.error} />
+          <ErrorText error={act.error ?? issue.error ?? discard.error} />
           <div className="flex flex-wrap gap-2">
             {canIssue ? (
               <Button disabled={issue.isPending} onClick={() => issue.mutate()}>
@@ -296,11 +311,33 @@ export function RequestDetail() {
                 {t.action === "Submit" ? "Send for approval" : t.action}
               </Button>
             ))}
+            {canDiscard ? (
+              <Button variant="ghost" disabled={discard.isPending} onClick={() => discard.mutate()}>
+                Discard
+              </Button>
+            ) : null}
           </div>
         </Card>
       ) : null}
+
+      <History doctype="Material Request" name={d.name} />
     </Page>
   );
+}
+
+/** Who has to act next, in plain words. */
+function waitingOn(d: RequestDoc, user: string): string | null {
+  switch (d.workflow_state) {
+    case "Pending Manager Approval":
+      return d.sd_approver === user ? "you to approve" : `${d.sd_approver_name || "the manager"} to approve`;
+    case "Pending Inventory Review":
+      return "the inventory team to review";
+    case "Approved":
+      if (d.status !== "Issued") return "the inventory team to issue the items";
+      return d.owner === user ? "you to confirm you received the items" : `${d.sd_employee_name} to confirm receipt`;
+    default:
+      return null;
+  }
 }
 
 type Event = { at: string; by: string; text: string };

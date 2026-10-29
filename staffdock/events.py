@@ -16,6 +16,7 @@ def material_request_validate(doc, method=None):
 	doc.sd_employee_name = employee.employee_name
 	if employee.reports_to:
 		doc.sd_approver = frappe.db.get_value("Employee", employee.reports_to, "user_id")
+		doc.sd_approver_name = frappe.utils.get_fullname(doc.sd_approver) if doc.sd_approver else None
 
 
 def require_workflow_submit(doc, method=None):
@@ -48,6 +49,6 @@ def asset_movement_on_submit(doc, method=None):
 				"type": "Alert",
 				"document_type": doc.doctype,
 				"document_name": doc.name,
-				"subject": _("Asset {0} assigned to you. Please acknowledge receipt.").format(row.asset),
+				"subject": _("{0} was assigned to you. Please confirm you received it").format(row.asset_name or row.asset),
 			}
 		).insert(ignore_permissions=True)

@@ -230,3 +230,24 @@ def history(doctype, name):
 	for e in events:
 		e["by"] = frappe.utils.get_fullname(e["by"])
 	return sorted(events, key=lambda e: e["at"])
+
+
+@frappe.whitelist()
+def discard_request(name):
+	"""Delete your own request that was never sent."""
+	doc = frappe.get_doc("Material Request", name)
+	if doc.owner != frappe.session.user or doc.docstatus != 0 or doc.workflow_state not in (None, "", "Draft"):
+		frappe.throw(_("Only your own unsent requests can be discarded."), frappe.PermissionError)
+	frappe.delete_doc("Material Request", name, ignore_permissions=True)
+
+
+@frappe.whitelist()
+def updates(limit=10):
+	"""Latest notifications for the current user (approvals, decisions, issues, assets)."""
+	return frappe.get_all(
+		"Notification Log",
+		filters={"for_user": frappe.session.user},
+		fields=["subject", "document_type", "document_name", "creation", "read"],
+		order_by="creation desc",
+		limit=min(int(limit), 50),
+	)

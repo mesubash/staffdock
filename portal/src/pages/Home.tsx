@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
-import { Card, Empty, ErrorText, Page, StatusBadge } from "@/components/common";
+import { Card, Empty, ErrorText, Page, StatusBadge, formatDate } from "@/components/common";
 import { call, type Tasks } from "@/lib/api";
 import { useMe } from "@/lib/session";
 
@@ -88,6 +88,8 @@ export function Home() {
         </ul>
       </Card>
 
+      <Updates />
+
       <div>
         <Link to="/requests/new" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
           + Request items or equipment
@@ -110,5 +112,41 @@ function Stat({ label, value, to }: { label: string; value?: number; to?: string
     </Link>
   ) : (
     body
+  );
+}
+
+type Update = { subject: string; document_type: string; document_name: string; creation: string };
+
+function Updates() {
+  const updates = useQuery({ queryKey: ["updates"], queryFn: () => call<Update[]>("staffdock.api.updates") });
+  if (!updates.data?.length) return null;
+  return (
+    <Card title="Recent updates">
+      <ul className="divide-y divide-border">
+        {updates.data.map((u, i) => {
+          const body = (
+            <div className="flex items-center gap-3 py-3">
+              <p className="min-w-0 flex-1 text-sm">{u.subject.replace(/<[^>]+>/g, "")}</p>
+              <span className="text-xs whitespace-nowrap text-muted-foreground">{formatDate(u.creation)}</span>
+            </div>
+          );
+          return (
+            <li key={i}>
+              {u.document_type === "Material Request" ? (
+                <Link to="/requests/$name" params={{ name: u.document_name }} className="block hover:bg-accent/50">
+                  {body}
+                </Link>
+              ) : u.document_type === "Asset Movement" ? (
+                <Link to="/assets" className="block hover:bg-accent/50">
+                  {body}
+                </Link>
+              ) : (
+                body
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }

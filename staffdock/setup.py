@@ -68,10 +68,17 @@ def setup_custom_fields():
 					"insert_after": "sd_employee_name",
 				},
 				{
+					"fieldname": "sd_approver_name",
+					"label": "Reporting Manager Name",
+					"fieldtype": "Data",
+					"read_only": 1,
+					"insert_after": "sd_approver",
+				},
+				{
 					"fieldname": "sd_reason",
 					"label": "Reason",
 					"fieldtype": "Small Text",
-					"insert_after": "sd_approver",
+					"insert_after": "sd_approver_name",
 				},
 			],
 			"Asset Movement": [
@@ -89,6 +96,11 @@ def setup_custom_fields():
 		update=True,
 	)
 	make_property_setter("Material Request", "material_request_type", "default", "Material Issue", "Text")
+	# Short, readable request numbers: REQ-00001
+	make_property_setter("Material Request", "naming_series", "options", "REQ-.#####", "Text")
+	make_property_setter("Material Request", "naming_series", "default", "REQ-.#####", "Text")
+	make_property_setter("Asset", "naming_series", "options", "AST-.#####", "Text")
+	make_property_setter("Asset", "naming_series", "default", "AST-.#####", "Text")
 	# Keep a version per save so the portal can show who moved a request/asset and when
 	for doctype in ("Material Request", "Asset Movement"):
 		make_property_setter(doctype, None, "track_changes", 1, "Check", for_doctype=True)
@@ -181,7 +193,6 @@ def setup_inventory_request_workflow():
 		("Draft", "Submit", "Pending Inventory Review", "Employee", f"{OWNER} and not doc.sd_approver", 1),
 		("Pending Manager Approval", "Approve", "Pending Inventory Review", "Employee", approver, 0),
 		("Pending Manager Approval", "Reject", "Manager Rejected", "Employee", approver, 0),
-		("Manager Rejected", "Revise", "Draft", "Employee", OWNER, 1),
 		("Pending Inventory Review", "Approve", "Approved", INVENTORY, None, 0),
 		("Pending Inventory Review", "Reject", "Inventory Rejected", INVENTORY, None, 0),
 		("Approved", "Acknowledge Receipt", "Completed", "Employee", f"{OWNER} and doc.status == 'Issued'", 1),
@@ -209,34 +220,38 @@ def setup_asset_movement_workflow():
 
 def setup_notifications():
 	mr = "Material Request"
-	# (name, field watched, condition, recipient kwargs)
+	# (name, field watched, condition, recipient kwargs, subject shown in the portal's updates)
 	notifications = [
 		(
 			"Request Awaiting Manager",
 			"workflow_state",
 			"doc.workflow_state == 'Pending Manager Approval'",
 			{"receiver_by_document_field": "sd_approver"},
+			"{{ doc.sd_employee_name }} needs your approval for {{ doc.name }}",
 		),
 		(
 			"Request Awaiting Inventory",
 			"workflow_state",
 			"doc.workflow_state == 'Pending Inventory Review'",
 			{"receiver_by_role": INVENTORY},
+			"{{ doc.name }} from {{ doc.sd_employee_name }} is ready for review",
 		),
 		(
 			"Request Decision",
 			"workflow_state",
 			"doc.workflow_state in ('Manager Rejected', 'Inventory Rejected', 'Approved')",
 			{"receiver_by_document_field": "owner"},
+			"Your request {{ doc.name }} was {{ 'rejected' if 'Rejected' in doc.workflow_state else 'approved' }}",
 		),
 		(
 			"Request Issued",
 			"status",
 			"doc.status == 'Issued'",
 			{"receiver_by_document_field": "owner"},
+			"Items for {{ doc.name }} were issued. Please confirm you received them",
 		),
 	]
-	for name, field, condition, recipient in notifications:
+	for name, field, condition, recipient, subject in notifications:
 		n = frappe.get_doc("Notification", name) if frappe.db.exists("Notification", name) else frappe.new_doc("Notification")
 		n.update(
 			{
@@ -248,7 +263,7 @@ def setup_notifications():
 				"event": "Value Change",
 				"value_changed": field,
 				"condition": condition,
-				"subject": "{{ doc.name }}: {{ doc.workflow_state }}",
+				"subject": subject,
 				"message": "Inventory request {{ doc.name }} is now {{ doc.workflow_state }} ({{ doc.status }}).",
 			}
 		)

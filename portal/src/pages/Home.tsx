@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 
 import { Card, Empty, ErrorText, Page, StatusBadge, formatDate } from "@/components/common";
 import { call, type Tasks } from "@/lib/api";
+import { leaveDates } from "@/pages/Leave";
 import { useMe } from "@/lib/session";
 
 function greeting() {
@@ -40,6 +41,12 @@ export function Home() {
           title: `Approve ${r.sd_employee_name}'s request`,
           detail: r.sd_reason || r.name,
           state: [r.workflow_state, r.status] as [string, string],
+        })),
+        ...t.leaves_to_approve.map((l) => ({
+          key: `leave-${l.name}`,
+          to: "/approvals",
+          title: `Approve ${l.employee_name}'s ${l.leave_type}`,
+          detail: leaveDates(l),
         })),
         ...(t.to_review ?? []).map((r) => ({
           key: `rev-${r.name}`,

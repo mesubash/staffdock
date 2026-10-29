@@ -99,9 +99,12 @@ def run(password):
 
 	for email, *_, manager in PEOPLE:
 		if manager:
-			frappe.db.set_value("Employee", employee_by_email[email], "reports_to", employee_by_email[manager])
+			employee = frappe.get_doc("Employee", employee_by_email[email])
+			employee.reports_to = employee_by_email[manager]
+			employee.save()  # also sets the leave approver (events.employee_validate)
 
 	seed_inventory(abbr)
+	seed_leave(employee_by_email.values())
 
 	frappe.db.commit()
 	return employee_by_email
@@ -122,6 +125,59 @@ ASSET_ITEMS = [
 	("LAPTOP-MBP", "MacBook Pro", 3, 250000),
 	("PHONE-ANDROID", "Android Phone", 2, 40000),
 ]
+
+
+YEAR = str(frappe.utils.getdate().year)
+# (leave type, days per year)
+LEAVE_ALLOCATIONS = [("Casual Leave", 12), ("Sick Leave", 6)]
+
+
+def seed_leave(employees):
+	holiday_list = f"{COMPANY} {YEAR}"
+	if not frappe.db.exists("Holiday List", holiday_list):
+		hl = frappe.get_doc(
+			{
+				"doctype": "Holiday List",
+				"holiday_list_name": holiday_list,
+				"from_date": f"{YEAR}-01-01",
+				"to_date": f"{YEAR}-12-31",
+			}
+		)
+		for day in ("Saturday", "Sunday"):
+			hl.weekly_off = day
+			hl.get_weekly_off_dates()
+		hl.insert()
+	frappe.db.set_value("Company", COMPANY, "default_holiday_list", holiday_list)
+	# Frappe HR v16 reads holidays from an assignment, not the company default
+	if not frappe.db.exists("Holiday List Assignment", {"assigned_to": COMPANY, "docstatus": 1}):
+		assignment = frappe.get_doc(
+			{
+				"doctype": "Holiday List Assignment",
+				"applicable_for": "Company",
+				"assigned_to": COMPANY,
+				"holiday_list": holiday_list,
+				"from_date": f"{YEAR}-01-01",
+			}
+		)
+		assignment.insert()
+		assignment.submit()
+
+	for employee in employees:
+		for leave_type, days in LEAVE_ALLOCATIONS:
+			if frappe.db.exists("Leave Allocation", {"employee": employee, "leave_type": leave_type, "docstatus": 1}):
+				continue
+			allocation = frappe.get_doc(
+				{
+					"doctype": "Leave Allocation",
+					"employee": employee,
+					"leave_type": leave_type,
+					"from_date": f"{YEAR}-01-01",
+					"to_date": f"{YEAR}-12-31",
+					"new_leaves_allocated": days,
+				}
+			)
+			allocation.insert()
+			allocation.submit()
 
 
 def seed_inventory(abbr):

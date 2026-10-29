@@ -10,8 +10,9 @@ export function Shell({ children }: { children: ReactNode }) {
   const nav = [
     { to: "/", label: "Home", show: true },
     { to: "/requests", label: "Requests", show: true },
+    { to: "/leave", label: "Leave", show: true },
     { to: "/assets", label: "My Assets", show: true },
-    { to: "/approvals", label: "Approvals", show: me.is_manager },
+    { to: "/approvals", label: "Approvals", show: me.is_manager || me.is_leave_approver },
     { to: "/inventory", label: "Inventory", show: me.is_inventory },
   ].filter((n) => n.show);
 

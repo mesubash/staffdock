@@ -52,3 +52,24 @@ def asset_movement_on_submit(doc, method=None):
 				"subject": _("{0} was assigned to you. Please confirm you received it").format(row.asset_name or row.asset),
 			}
 		).insert(ignore_permissions=True)
+
+
+# People who manage other employees' records must not be limited to their own Employee record.
+HR_ROLES = {"HR Manager", "HR User", "System Manager"}
+
+
+def employee_validate(doc, method=None):
+	"""The reporting manager approves leave unless HR set a different leave approver."""
+	if doc.reports_to and not doc.leave_approver:
+		doc.leave_approver = frappe.db.get_value("Employee", doc.reports_to, "user_id")
+	if doc.user_id and HR_ROLES & set(frappe.get_roles(doc.user_id)):
+		# ERPNext removes the existing "own record only" user permission when this changes
+		doc.create_user_permission = 0
+
+
+def user_on_update(doc, method=None):
+	"""Someone given an HR role later: lift the own-record restriction on their employee."""
+	if not HR_ROLES & {r.role for r in doc.roles}:
+		return
+	for employee in frappe.get_all("Employee", filters={"user_id": doc.name, "create_user_permission": 1}, pluck="name"):
+		frappe.get_doc("Employee", employee).save(ignore_permissions=True)

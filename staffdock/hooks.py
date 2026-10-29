@@ -27,7 +27,8 @@ has_permission = {
 }
 
 doc_events = {
-	"User": {"validate": "staffdock.users.user_validate"},
+	"User": {"validate": "staffdock.users.user_validate", "on_update": "staffdock.events.user_on_update"},
+	"Employee": {"validate": "staffdock.events.employee_validate"},
 	"Material Request": {
 		"validate": "staffdock.events.material_request_validate",
 		"before_submit": "staffdock.events.require_workflow_submit",

@@ -205,4 +205,60 @@ ret = ian.api("receive_asset", asset=asset, condition="Minor Wear")
 assert ian.get("Asset Movement", ret)["sd_return_condition"] == "Minor Wear"
 assert not ian.get("Asset", asset)["custodian"], "returned asset must have no custodian"
 
-print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}")
+# --- Leave: apply -> manager approves / rejects, withdraw, balance
+import datetime
+
+def leave_window(weeks_ahead=1):
+	"""A Monday-Tuesday in a coming week; the test cancels or rejects what it books, so this stays free."""
+	start = datetime.date.today() + datetime.timedelta(days=7 * weeks_ahead)
+	start -= datetime.timedelta(days=start.weekday())
+	return start.isoformat(), (start + datetime.timedelta(days=1)).isoformat()
+
+
+def casual(session):
+	return next(b for b in session.api("leave_summary")["balances"] if b["leave_type"] == "Casual Leave")
+
+# Clear leave left by an earlier run that stopped half-way
+for a in emma.api("leave_summary")["applications"]:
+	if (a["description"] or "").startswith("e2e") and a["status"] in ("Open", "Approved"):
+		if a["docstatus"] == 0:
+			emma.api("withdraw_leave", name=a["name"])
+		else:
+			hana.call("POST", "/api/method/frappe.client.cancel", {"doctype": "Leave Application", "name": a["name"]})
+
+before = casual(emma)
+f, t = leave_window(1)
+leave = emma.api("apply_leave", leave_type="Casual Leave", from_date=f, to_date=t, reason="e2e leave")
+assert any(l["name"] == leave for l in max.api("my_tasks")["leaves_to_approve"]), "manager sees leave in tasks"
+assert max.api("me")["is_leave_approver"]
+assert not emma.ok("POST", "/api/method/staffdock.api.decide_leave", {"name": leave, "approve": 1}), "no self-approval"
+assert not olivia.ok("POST", "/api/method/staffdock.api.decide_leave", {"name": leave, "approve": 1}), "only the approver decides"
+assert not olivia.ok("POST", "/api/method/staffdock.api.withdraw_leave", {"name": leave}), "only the employee withdraws"
+assert max.api("decide_leave", name=leave, approve=1) == "Approved"
+after = casual(emma)
+assert after["remaining"] == before["remaining"] - 2 and after["taken"] == before["taken"] + 2, (before, after)
+assert eventually_updated(max, "Emma Employee applied for Casual Leave")
+assert eventually_updated(emma, f"Your Casual Leave from {f} was approved")
+assert not max.ok("POST", "/api/method/staffdock.api.decide_leave", {"name": leave, "approve": 0}), "decided leave stays decided"
+
+f, t = leave_window(2)
+gone = emma.api("apply_leave", leave_type="Casual Leave", from_date=f, to_date=t, reason="e2e withdraw")
+emma.api("withdraw_leave", name=gone)
+assert all(a["name"] != gone for a in emma.api("leave_summary")["applications"]), "withdrawn leave is gone"
+
+no = emma.api("apply_leave", leave_type="Sick Leave", from_date=f, to_date=t, reason="e2e reject")
+assert max.api("decide_leave", name=no, approve=0) == "Rejected"
+assert eventually_updated(emma, f"Your Sick Leave from {f} was rejected")
+
+try:
+	f3, _ = leave_window(3)
+	emma.api("apply_leave", leave_type="Sick Leave", from_date=f3, to_date=(datetime.date.fromisoformat(f3) + datetime.timedelta(days=11)).isoformat(), reason="too long")
+	raise AssertionError("leave beyond balance must be refused")
+except urllib.error.HTTPError as err:
+	assert "balance" in err.msg.lower(), err.msg
+
+# HR cancels the approved leave (normal HR action): balance comes back and the dates free up for the next run
+hana.call("POST", "/api/method/frappe.client.cancel", {"doctype": "Leave Application", "name": leave})
+assert casual(emma)["remaining"] == before["remaining"], "cancelled leave returns to the balance"
+
+print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

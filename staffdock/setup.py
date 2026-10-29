@@ -22,11 +22,23 @@ def after_migrate():
 	setup_asset_movement_workflow()
 	setup_notifications()
 	staffdock_settings.sync_branding()
+	lift_own_record_restriction_for_hr()
 	# Desk is only for HR/admins; they land on the apps grid (staff never reach desk)
 	frappe.db.set_single_value("System Settings", "default_app", "")
 	frappe.db.set_single_value("Website Settings", "disable_signup", 1)
 	frappe.db.set_single_value("Website Settings", "home_page", "staff")
 	frappe.db.commit()
+
+
+def lift_own_record_restriction_for_hr():
+	"""HR/admin staff manage other employees; see events.employee_validate."""
+	from staffdock.events import HR_ROLES
+
+	hr_users = set(frappe.get_all("Has Role", filters={"role": ["in", list(HR_ROLES)], "parenttype": "User"}, pluck="parent"))
+	for employee in frappe.get_all(
+		"Employee", filters={"create_user_permission": 1, "user_id": ["in", list(hr_users) or [""]]}, pluck="name"
+	):
+		frappe.get_doc("Employee", employee).save(ignore_permissions=True)
 
 
 def setup_roles():
@@ -35,6 +47,13 @@ def setup_roles():
 	# and can only use the portal. HR/Admin keep desk through their own roles.
 	frappe.db.set_value("Role", EMPLOYEE, {"desk_access": 0, "home_page": "staff"})
 	frappe.db.set_value("Role", "Desk User", "home_page", "")
+	# HRMS gives approvers these roles automatically; approvals happen in the portal, not desk
+	for role in ("Leave Approver", "Expense Approver"):
+		if frappe.db.get_value("Role", role, "desk_access"):
+			frappe.db.set_value("Role", role, "desk_access", 0)
+			# user_type is worked out from roles on save; recompute for current holders
+			for user in frappe.get_all("Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"):
+				frappe.get_doc("User", user).save(ignore_permissions=True)
 
 
 def setup_custom_fields():
@@ -251,7 +270,27 @@ def setup_notifications():
 			"Items for {{ doc.name }} were issued. Please confirm you received them",
 		),
 	]
-	for name, field, condition, recipient, subject in notifications:
+	notifications = [(name, mr, "Value Change", *rest) for name, *rest in notifications] + [
+		(
+			"Leave Awaiting Approval",
+			"Leave Application",
+			"New",
+			None,
+			"doc.leave_approver",
+			{"receiver_by_document_field": "leave_approver"},
+			"{{ doc.employee_name }} applied for {{ doc.leave_type }} from {{ doc.from_date }}",
+		),
+		(
+			"Leave Decision",
+			"Leave Application",
+			"Value Change",
+			"status",
+			"doc.status in ('Approved', 'Rejected')",
+			{"receiver_by_document_field": "owner"},
+			"Your {{ doc.leave_type }} from {{ doc.from_date }} was {{ doc.status | lower }}",
+		),
+	]
+	for name, doctype, event, field, condition, recipient, subject in notifications:
 		n = frappe.get_doc("Notification", name) if frappe.db.exists("Notification", name) else frappe.new_doc("Notification")
 		n.update(
 			{
@@ -259,12 +298,12 @@ def setup_notifications():
 				"__newname": name,
 				"enabled": 1,
 				"channel": "System Notification",
-				"document_type": mr,
-				"event": "Value Change",
+				"document_type": doctype,
+				"event": event,
 				"value_changed": field,
 				"condition": condition,
 				"subject": subject,
-				"message": "Inventory request {{ doc.name }} is now {{ doc.workflow_state }} ({{ doc.status }}).",
+				"message": subject,
 			}
 		)
 		n.set("recipients", [recipient])

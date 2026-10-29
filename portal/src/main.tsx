@@ -12,6 +12,7 @@ import { Approvals } from "@/pages/Approvals";
 import { MyAssets } from "@/pages/Assets";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
+import { Leave } from "@/pages/Leave";
 import { RequestDetail, RequestNew, RequestsList } from "@/pages/Requests";
 
 function Root() {
@@ -37,6 +38,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: "/requests", component: RequestsList }),
   createRoute({ getParentRoute: () => root, path: "/requests/new", component: RequestNew }),
   createRoute({ getParentRoute: () => root, path: "/requests/$name", component: RequestDetail }),
+  createRoute({ getParentRoute: () => root, path: "/leave", component: Leave }),
   createRoute({ getParentRoute: () => root, path: "/approvals", component: Approvals }),
   createRoute({ getParentRoute: () => root, path: "/assets", component: MyAssets }),
   createRoute({ getParentRoute: () => root, path: "/inventory", component: Inventory }),

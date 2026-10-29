@@ -36,6 +36,7 @@ def me():
 		"full_name": frappe.utils.get_fullname(user),
 		"employee": employee,
 		"is_manager": bool(employee and frappe.db.exists("Employee", {"reports_to": employee.name, "status": "Active"})),
+		"is_leave_approver": bool(frappe.db.exists("Employee", {"leave_approver": user, "status": "Active"})),
 		"is_inventory": INVENTORY in roles,
 		"has_desk": frappe.db.get_value("User", user, "user_type") == "System User",
 		"default_warehouse": _default_warehouse(),
@@ -181,6 +182,7 @@ def my_tasks():
 			"Material Request", {"owner": user, "workflow_state": ["not in", ["Completed", "Inventory Rejected"]]}
 		),
 		"my_assets": frappe.db.count("Asset", {"custodian": employee}) if employee else 0,
+		"leaves_to_approve": leaves_to_approve(),
 	}
 	if INVENTORY in frappe.get_roles():
 		tasks["to_review"] = frappe.get_all(
@@ -251,3 +253,117 @@ def updates(limit=10):
 		order_by="creation desc",
 		limit=min(int(limit), 50),
 	)
+
+
+# --- Leave (Frappe HR Leave Application)
+
+LEAVE_FIELDS = [
+	"name",
+	"employee_name",
+	"leave_type",
+	"from_date",
+	"to_date",
+	"half_day",
+	"total_leave_days",
+	"description",
+	"status",
+	"docstatus",
+	"leave_approver_name",
+	"modified",
+]
+
+
+def _my_employee():
+	employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	if not employee:
+		frappe.throw(_("Your account is not linked to an employee record. Contact HR."))
+	return employee
+
+
+@frappe.whitelist()
+def leave_summary():
+	"""Balances per leave type and my applications, newest first."""
+	from hrms.hr.doctype.leave_application.leave_application import get_leave_details
+
+	employee = _my_employee()
+	allocation = get_leave_details(employee, frappe.utils.today())["leave_allocation"]
+	return {
+		"balances": [
+			{
+				"leave_type": leave_type,
+				"total": flt(d.get("total_leaves")),
+				"taken": flt(d.get("leaves_taken")),
+				"pending": flt(d.get("leaves_pending_approval")),
+				"remaining": flt(d.get("remaining_leaves")),
+			}
+			for leave_type, d in allocation.items()
+		],
+		"applications": frappe.get_all(
+			"Leave Application",
+			filters={"employee": employee},
+			fields=LEAVE_FIELDS,
+			order_by="from_date desc",
+			limit=50,
+		),
+	}
+
+
+@frappe.whitelist()
+def apply_leave(leave_type, from_date, to_date, reason, half_day=0):
+	employee = _my_employee()
+	doc = frappe.get_doc(
+		{
+			"doctype": "Leave Application",
+			"employee": employee,
+			"leave_type": leave_type,
+			"from_date": from_date,
+			"to_date": to_date,
+			"half_day": frappe.utils.cint(half_day),
+			"half_day_date": from_date if frappe.utils.cint(half_day) else None,
+			"description": reason,
+			"status": "Open",
+		}
+	)
+	if not doc.leave_approver:
+		from hrms.hr.doctype.leave_application.leave_application import get_employee_leave_approver
+
+		doc.leave_approver = get_employee_leave_approver(employee)
+	if not doc.leave_approver:
+		frappe.throw(_("You have no leave approver. Ask HR to set your manager."))
+	doc.insert()
+	return doc.name
+
+
+@frappe.whitelist()
+def withdraw_leave(name):
+	"""Take back your own leave application before it is decided."""
+	doc = frappe.get_doc("Leave Application", name)
+	if doc.employee != _my_employee() or doc.docstatus != 0 or doc.status != "Open":
+		frappe.throw(_("Only your own undecided leave can be withdrawn."), frappe.PermissionError)
+	frappe.delete_doc("Leave Application", name, ignore_permissions=True)
+
+
+@frappe.whitelist()
+def leaves_to_approve():
+	return frappe.get_all(
+		"Leave Application",
+		filters={"leave_approver": frappe.session.user, "status": "Open", "docstatus": 0},
+		fields=LEAVE_FIELDS,
+		order_by="from_date asc",
+	)
+
+
+@frappe.whitelist()
+def decide_leave(name, approve):
+	"""Approve or reject as the leave approver. HRMS records both by submitting."""
+	doc = frappe.get_doc("Leave Application", name)
+	if doc.leave_approver != frappe.session.user:
+		frappe.throw(_("Only the leave approver can decide this application."), frappe.PermissionError)
+	if doc.docstatus != 0 or doc.status != "Open":
+		frappe.throw(_("This leave application is already decided."))
+	doc.status = "Approved" if frappe.utils.cint(approve) else "Rejected"
+	# The approver check above replaces row-level access: approvers can't read other
+	# employees' records through Employee user permissions.
+	doc.flags.ignore_permissions = True
+	doc.submit()
+	return doc.status

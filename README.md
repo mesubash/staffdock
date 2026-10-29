@@ -10,6 +10,8 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Staff portal** (`/staff`): see what's waiting on you, nothing else. Sign-in uses Frappe's own login
   (password reset, 2FA, and "Sign in with …" through any OAuth/OIDC provider via Social Login Keys).
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
+- **Leave**: balances, apply (incl. half day), manager approves or rejects, withdraw while pending.
+  Built on Frappe HR Leave Application, so allocations, holidays and HR reports work as usual.
 - **Assets**: issue company property to an employee, they confirm receipt, receive it back with its condition.
 - **Inventory**: review and issue requests, stock levels, receive stock.
 - **History** on every request: who did what, when.
@@ -25,7 +27,7 @@ so stock and asset history stay in ERPNext's ledgers.
 | Role | Uses | Sees |
 |---|---|---|
 | Employee | Portal only (no desk) | Own requests and assets; confirm receipts |
-| Manager (anyone with reportees) | Portal | + team approvals |
+| Manager (anyone with reportees or set as leave approver) | Portal | + team approvals (requests and leave) |
 | Inventory | Portal | + review/issue requests, issue/receive assets, stock levels, receive stock |
 | HR (HR Manager / HR User) | Portal + desk (Frappe HR) | HR records and settings |
 | Admin (System Manager) | Portal + desk (ERPNext + Frappe HR) | Everything |
@@ -88,7 +90,7 @@ bench --site staffdock.localhost execute staffdock.dev_seed.run --kwargs '{"pass
 bench start
 ```
 
-The seed runs the setup wizard (Acme Corp) and creates one demo user per role:
+The seed runs the setup wizard (Acme Corp), adds a holiday list and leave allocations, and creates one demo user per role:
 `emma@example.com` (employee), `max@` (her manager), `ian@` (inventory), `olivia@` (another team), `hana@` (HR).
 
 Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk

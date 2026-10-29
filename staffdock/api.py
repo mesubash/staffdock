@@ -367,3 +367,90 @@ def decide_leave(name, approve):
 	doc.flags.ignore_permissions = True
 	doc.submit()
 	return doc.status
+
+
+# --- Attendance (Frappe HR Employee Checkin). Time always comes from the server.
+
+DOUBLE_TAP_SECONDS = 10
+
+
+def _checkins(employee, start, end):
+	return frappe.get_all(
+		"Employee Checkin",
+		filters={"employee": employee, "time": ["between", [start, end]]},
+		fields=["log_type", "time"],
+		order_by="time asc",
+	)
+
+
+def _worked_seconds(logs, until=None):
+	"""Sum IN→OUT pairs; an open IN counts up to `until` (now, for today)."""
+	total, started = 0, None
+	for log in logs:
+		if log.log_type == "IN" and started is None:
+			started = log.time
+		elif log.log_type == "OUT" and started is not None:
+			total += (log.time - started).total_seconds()
+			started = None
+	if started is not None and until:
+		total += (until - started).total_seconds()
+	return int(total)
+
+
+@frappe.whitelist()
+def attendance_today():
+	employee = _my_employee()
+	now = frappe.utils.now_datetime()
+	day = now.date()
+	logs = _checkins(employee, f"{day} 00:00:00", f"{day} 23:59:59")
+	checked_in = bool(logs) and logs[-1].log_type == "IN"
+	return {
+		"checked_in": checked_in,
+		"first_in": next((l.time for l in logs if l.log_type == "IN"), None),
+		"last": logs[-1].time if logs else None,
+		"worked_seconds": _worked_seconds(logs, now),
+		"geolocation_required": bool(frappe.db.get_single_value("HR Settings", "allow_geolocation_tracking")),
+	}
+
+
+@frappe.whitelist()
+def check_in_out(latitude=None, longitude=None):
+	"""Toggle: check in if out, check out if in. Employees can't create check-ins any other way."""
+	employee = _my_employee()
+	now = frappe.utils.now_datetime()
+	day = now.date()
+	logs = _checkins(employee, f"{day} 00:00:00", f"{day} 23:59:59")
+	if logs and (now - logs[-1].time).total_seconds() < DOUBLE_TAP_SECONDS:
+		return logs[-1].log_type  # double click: keep the state the first click set
+	log_type = "OUT" if logs and logs[-1].log_type == "IN" else "IN"
+	frappe.get_doc(
+		{
+			"doctype": "Employee Checkin",
+			"employee": employee,
+			"log_type": log_type,
+			"time": now,
+			"latitude": flt(latitude) or None,
+			"longitude": flt(longitude) or None,
+		}
+	).insert(ignore_permissions=True)
+	return log_type
+
+
+@frappe.whitelist()
+def attendance_history(days=30):
+	employee = _my_employee()
+	end = frappe.utils.now_datetime()
+	start = frappe.utils.add_days(end.date(), -min(int(days), 90) + 1)
+	by_day = {}
+	for log in _checkins(employee, f"{start} 00:00:00", end):
+		by_day.setdefault(log.time.date(), []).append(log)
+	today = end.date()
+	return [
+		{
+			"date": day,
+			"first_in": next((l.time for l in logs if l.log_type == "IN"), None),
+			"last_out": next((l.time for l in reversed(logs) if l.log_type == "OUT"), None),
+			"worked_seconds": _worked_seconds(logs, end if day == today else None),
+		}
+		for day, logs in sorted(by_day.items(), reverse=True)
+	]

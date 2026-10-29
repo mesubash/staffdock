@@ -10,6 +10,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const nav = [
     { to: "/", label: "Home", show: true },
     { to: "/requests", label: "Requests", show: true },
+    { to: "/attendance", label: "Attendance", show: true },
     { to: "/leave", label: "Leave", show: true },
     { to: "/assets", label: "My Assets", show: true },
     { to: "/approvals", label: "Approvals", show: me.is_manager || me.is_leave_approver },

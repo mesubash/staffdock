@@ -9,6 +9,7 @@ import { Shell } from "@/components/Shell";
 import { call, type Me } from "@/lib/api";
 import { MeContext } from "@/lib/session";
 import { Approvals } from "@/pages/Approvals";
+import { Attendance } from "@/pages/Attendance";
 import { MyAssets } from "@/pages/Assets";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
@@ -39,6 +40,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: "/requests/new", component: RequestNew }),
   createRoute({ getParentRoute: () => root, path: "/requests/$name", component: RequestDetail }),
   createRoute({ getParentRoute: () => root, path: "/leave", component: Leave }),
+  createRoute({ getParentRoute: () => root, path: "/attendance", component: Attendance }),
   createRoute({ getParentRoute: () => root, path: "/approvals", component: Approvals }),
   createRoute({ getParentRoute: () => root, path: "/assets", component: MyAssets }),
   createRoute({ getParentRoute: () => root, path: "/inventory", component: Inventory }),

@@ -139,6 +139,9 @@ def setup_permissions():
 	_grant("Material Request", "Employee", "read", "write", "create", "submit")
 	_grant("Asset", "Employee", "read")
 	_grant("Asset Movement", "Employee", "read", "write", "submit")
+	# Check-ins only through staffdock.api.check_in_out (server time); employees can still read their own
+	for ptype in ("create", "write", "delete"):
+		update_permission_property("Employee Checkin", EMPLOYEE, 0, ptype, 0, validate=False)
 	# Needed to pick items in a request
 	for doctype in ("Item", "Warehouse", "UOM"):
 		_grant(doctype, "Employee", "read")

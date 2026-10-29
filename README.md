@@ -10,6 +10,8 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Staff portal** (`/staff`): see what's waiting on you, nothing else. Sign-in uses Frappe's own login
   (password reset, 2FA, and "Sign in with …" through any OAuth/OIDC provider via Social Login Keys).
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
+- **Attendance**: check in / check out from the portal (server time only, double clicks ignored),
+  hours today and the last 30 days. Stored as Frappe HR Employee Checkins; optional location when HR enables it.
 - **Leave**: balances, apply (incl. half day), manager approves or rejects, withdraw while pending.
   Built on Frappe HR Leave Application, so allocations, holidays and HR reports work as usual.
 - **Assets**: issue company property to an employee, they confirm receipt, receive it back with its condition.

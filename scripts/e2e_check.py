@@ -261,4 +261,25 @@ except urllib.error.HTTPError as err:
 hana.call("POST", "/api/method/frappe.client.cancel", {"doctype": "Leave Application", "name": leave})
 assert casual(emma)["remaining"] == before["remaining"], "cancelled leave returns to the balance"
 
+# --- Attendance: check in/out toggles, server time only, own records only
+time.sleep(11)  # past the double-click window of any earlier toggle (e.g. a previous run)
+was_in = emma.api("attendance_today")["checked_in"]
+expect = "OUT" if was_in else "IN"
+assert emma.api("check_in_out", time="2026-01-01 08:00:00") == expect  # a client-sent time is ignored
+today = emma.api("attendance_today")
+assert today["last"].startswith(datetime.date.today().isoformat()) and today["checked_in"] != was_in, today
+assert emma.api("check_in_out") == expect and emma.api("attendance_today")["checked_in"] != was_in, "double click is ignored"
+assert emma.api("attendance_history")[0]["first_in"], "today shows in history"
+time.sleep(11)
+assert emma.api("check_in_out") == ("IN" if was_in else "OUT") and emma.api("attendance_today")["checked_in"] == was_in
+assert not emma.ok(
+	"POST", "/api/resource/Employee Checkin", {"employee": emma_emp, "log_type": "IN", "time": "2026-01-01 08:00:00"}
+), "employees can't write their own check-in times"
+emma.api("check_in_out", time="2026-01-01 08:00:00")  # a client-sent time is ignored
+assert emma.api("attendance_today")["last"].startswith(datetime.date.today().isoformat()), "server time only"
+emma.api("check_in_out")  # back to where we started
+assert not olivia.ok("GET", "/api/resource/Employee Checkin?filters=" + urllib.request.quote(json.dumps([["employee", "=", emma_emp]])) + "&limit_page_length=1") or not olivia.call(
+	"GET", "/api/resource/Employee Checkin?filters=" + urllib.request.quote(json.dumps([["employee", "=", emma_emp]]))
+), "others can't read someone's check-ins"
+
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

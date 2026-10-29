@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 
 import { Card, Empty, ErrorText, Page, StatusBadge, formatDate } from "@/components/common";
 import { call, type Tasks } from "@/lib/api";
+import { CheckInCard } from "@/pages/Attendance";
 import { leaveDates } from "@/pages/Leave";
 import { useMe } from "@/lib/session";
 
@@ -69,6 +70,8 @@ export function Home() {
 
   return (
     <Page title={`${greeting()}, ${me.full_name.split(" ")[0]}`}>
+      {me.employee ? <CheckInCard /> : null}
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Waiting on you" value={items.length} />
         <Stat label="My open requests" value={t?.open_requests} to="/requests" />

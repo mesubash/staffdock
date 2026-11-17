@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 
 import { BRAND, logout } from "@/lib/api";
 import { useMe } from "@/lib/session";
+import { Avatar } from "@/pages/Profile";
 
 export function Shell({ children }: { children: ReactNode }) {
   const me = useMe();
@@ -53,7 +54,14 @@ export function Shell({ children }: { children: ReactNode }) {
               <Settings className="size-4" />
             </a>
           ) : null}
-          <span className="hidden text-sm text-muted-foreground md:inline">{me.full_name}</span>
+          {me.employee ? (
+            <Link to="/profile" title="My profile" className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent">
+              <Avatar name={me.full_name} image={me.image} size="size-7" />
+              <span className="hidden lg:inline">{me.full_name}</span>
+            </Link>
+          ) : (
+            <span className="hidden text-sm text-muted-foreground md:inline">{me.full_name}</span>
+          )}
           <button
             type="button"
             title="Sign out"

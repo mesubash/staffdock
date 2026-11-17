@@ -104,6 +104,22 @@ export function applyAction(doc: unknown, action: string) {
 
 // --- Session
 
+/** Upload a file (not attached to any record yet); returns its URL. */
+export async function uploadFile(file: File, isPrivate: boolean): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  form.append("is_private", isPrivate ? "1" : "0");
+  const res = await fetch("/api/method/upload_file", {
+    method: "POST",
+    credentials: "include",
+    headers: { Accept: "application/json", "X-Frappe-CSRF-Token": window.csrf_token ?? "" },
+    body: form,
+  });
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw new ApiError(errorMessage(body), res.status);
+  return (body.message as { file_url: string }).file_url;
+}
+
 export async function logout() {
   await request("/api/method/logout", { method: "POST" });
 }
@@ -113,6 +129,7 @@ export async function logout() {
 export type Me = {
   user: string;
   full_name: string;
+  image?: string | null;
   employee: { name: string; employee_name: string; department: string } | null;
   is_manager: boolean;
   is_leave_approver: boolean;

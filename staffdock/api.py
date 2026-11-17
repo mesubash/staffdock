@@ -30,10 +30,13 @@ def _default_warehouse():
 def me():
 	user = frappe.session.user
 	roles = set(frappe.get_roles())
-	employee = frappe.db.get_value("Employee", {"user_id": user}, ["name", "employee_name", "department"], as_dict=True)
+	employee = frappe.db.get_value(
+		"Employee", {"user_id": user}, ["name", "employee_name", "department", "image"], as_dict=True
+	)
 	return {
 		"user": user,
 		"full_name": frappe.utils.get_fullname(user),
+		"image": (employee and employee.image) or frappe.db.get_value("User", user, "user_image"),
 		"employee": employee,
 		"is_manager": bool(employee and frappe.db.exists("Employee", {"reports_to": employee.name, "status": "Active"})),
 		"is_leave_approver": bool(frappe.db.exists("Employee", {"leave_approver": user, "status": "Active"})),
@@ -273,6 +276,11 @@ LEAVE_FIELDS = [
 ]
 
 
+def _department_name(department):
+	"""ERPNext suffixes departments with the company abbreviation ("IT - AC"); show the plain name."""
+	return department and (frappe.db.get_value("Department", department, "department_name") or department)
+
+
 def _my_employee():
 	employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
 	if not employee:
@@ -454,3 +462,70 @@ def attendance_history(days=30):
 		}
 		for day, logs in sorted(by_day.items(), reverse=True)
 	]
+
+
+# --- My profile. Employees can't write their Employee record directly; only these fields change.
+
+PROFILE_FIELDS = (
+	"employee_name",
+	"designation",
+	"department",
+	"company",
+	"date_of_joining",
+	"company_email",
+	"image",
+	"cell_number",
+	"personal_email",
+	"current_address",
+	"person_to_be_contacted",
+	"emergency_phone_number",
+	"relation",
+)
+PROFILE_EDITABLE = (
+	"cell_number",
+	"personal_email",
+	"current_address",
+	"person_to_be_contacted",
+	"emergency_phone_number",
+	"relation",
+)
+
+
+@frappe.whitelist()
+def my_profile():
+	employee = frappe.get_doc("Employee", _my_employee())
+	profile = {f: employee.get(f) for f in PROFILE_FIELDS}
+	profile["department"] = _department_name(employee.department)
+	profile["manager"] = employee.reports_to and frappe.db.get_value("Employee", employee.reports_to, "employee_name")
+	return profile
+
+
+@frappe.whitelist()
+def update_profile(**changes):
+	employee = frappe.get_doc("Employee", _my_employee())
+	for field in PROFILE_EDITABLE:
+		if field in changes:
+			employee.set(field, (changes[field] or "").strip())
+	if employee.personal_email:
+		frappe.utils.validate_email_address(employee.personal_email, throw=True)
+	employee.flags.ignore_permissions = True
+	employee.save()
+	return my_profile()
+
+
+@frappe.whitelist()
+def set_profile_photo(file_url):
+	"""Use an image the current user just uploaded as their photo."""
+	file = frappe.db.get_value(
+		"File", {"file_url": file_url, "owner": frappe.session.user}, ["name", "is_private", "file_name"], as_dict=True
+	)
+	if not file or not frappe.utils.is_image(file.file_name or file_url):
+		frappe.throw(_("Upload an image first."))
+	if file.is_private:
+		frappe.throw(_("Profile photos must be public."))
+	employee = frappe.get_doc("Employee", _my_employee())
+	employee.image = file_url
+	employee.flags.ignore_permissions = True
+	employee.save()
+	frappe.db.set_value("User", frappe.session.user, "user_image", file_url)
+	return file_url

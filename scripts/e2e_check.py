@@ -64,6 +64,22 @@ class Session:
 		except urllib.error.HTTPError as e:
 			return e.code, path
 
+	def upload(self, name, content, is_private=0):
+		boundary = "----staffdock" + str(time.time_ns())
+		body = (
+			f"--{boundary}\r\nContent-Disposition: form-data; name=\"is_private\"\r\n\r\n{is_private}\r\n"
+			f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}\"\r\n"
+			"Content-Type: application/octet-stream\r\n\r\n"
+		).encode() + content + f"\r\n--{boundary}--\r\n".encode()
+		req = urllib.request.Request(
+			BASE + "/api/method/upload_file",
+			data=body,
+			method="POST",
+			headers={"Content-Type": f"multipart/form-data; boundary={boundary}", "X-Frappe-CSRF-Token": self.csrf, "Accept": "application/json"},
+		)
+		with self.opener.open(req) as r:
+			return json.loads(r.read())["message"]["file_url"]
+
 	def api(self, method, **args):
 		return self.call("POST", f"/api/method/staffdock.api.{method}", args)
 
@@ -290,5 +306,17 @@ emma.api("check_in_out")  # back to where we started
 assert not olivia.ok("GET", "/api/resource/Employee Checkin?filters=" + urllib.request.quote(json.dumps([["employee", "=", emma_emp]])) + "&limit_page_length=1") or not olivia.call(
 	"GET", "/api/resource/Employee Checkin?filters=" + urllib.request.quote(json.dumps([["employee", "=", emma_emp]]))
 ), "others can't read someone's check-ins"
+
+# --- My profile: own contact fields only, photo from own upload
+profile = emma.api("update_profile", cell_number="+1 555 0100", personal_email="emma.home@example.org", designation="CEO")
+assert profile["cell_number"] == "+1 555 0100" and profile["personal_email"] == "emma.home@example.org"
+assert profile["designation"] == "Software Developer", "only contact fields are editable"
+assert not emma.ok("POST", "/api/method/staffdock.api.update_profile", {"personal_email": "not-an-email"}), "bad email refused"
+assert not emma.ok("PUT", f"/api/resource/Employee/{emma_emp}", {"cell_number": "1"}), "no direct Employee writes"
+PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000" "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")
+photo = emma.upload("emma.png", PNG)
+assert not olivia.ok("POST", "/api/method/staffdock.api.set_profile_photo", {"file_url": photo}), "can't use someone else's upload"
+emma.api("set_profile_photo", file_url=photo)
+assert emma.api("my_profile")["image"] == photo and emma.api("me")["image"] == photo
 
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

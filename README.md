@@ -10,8 +10,9 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Staff portal** (`/staff`): see what's waiting on you, nothing else. Sign-in uses Frappe's own login
   (password reset, 2FA, and "Sign in with …" through any OAuth/OIDC provider via Social Login Keys).
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
-- **My profile**: see your job details and manager; update phone, personal email, address, emergency contact
-  and photo. Everything else stays with HR.
+- **My profile and documents**: see your job details and manager; update phone, personal email, address,
+  emergency contact and photo (everything else stays with HR). Files HR attaches to your employee record
+  (contracts, letters) are listed for download and stay private to you.
 - **Expenses**: claim one or more expenses with a receipt; the manager approves or rejects in the portal and
   finance pays approved claims in desk as usual (Frappe HR Expense Claim). Receipts stay private to the
   employee, the approver and finance.

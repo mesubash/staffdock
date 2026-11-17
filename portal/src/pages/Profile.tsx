@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera } from "lucide-react";
+import { Camera, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Card, ErrorText, Page, Skeleton, formatDate } from "@/components/common";
@@ -129,6 +129,8 @@ export function ProfilePage() {
         </Card>
       ) : null}
 
+      <Documents />
+
       {form ? (
         <form
           onSubmit={(e) => {
@@ -169,5 +171,34 @@ function Detail({ label, value }: { label: string; value?: string }) {
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-medium">{value || "—"}</dd>
     </div>
+  );
+}
+
+type Doc = { name: string; file_name: string; file_url: string; file_size: number; creation: string };
+
+function size(bytes: number) {
+  return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function Documents() {
+  const docs = useQuery({ queryKey: ["documents"], queryFn: () => call<Doc[]>("staffdock.api.my_documents") });
+  return (
+    <Card title="My documents">
+      <ErrorText error={docs.error} />
+      {docs.isLoading ? <Skeleton rows={2} /> : null}
+      {docs.data?.length === 0 ? <p className="text-sm text-muted-foreground">HR hasn't shared any documents with you yet.</p> : null}
+      <ul className="divide-y divide-border">
+        {docs.data?.map((d) => (
+          <li key={d.name} className="flex items-center gap-3 py-2.5 text-sm">
+            <FileText className="size-4 text-muted-foreground" />
+            <a href={d.file_url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-primary underline-offset-4 hover:underline">
+              {d.file_name}
+            </a>
+            <span className="text-xs text-muted-foreground">{size(d.file_size)}</span>
+            <span className="text-xs text-muted-foreground">{formatDate(d.creation)}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }

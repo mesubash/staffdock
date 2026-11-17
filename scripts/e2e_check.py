@@ -64,10 +64,16 @@ class Session:
 		except urllib.error.HTTPError as e:
 			return e.code, path
 
-	def upload(self, name, content, is_private=0):
+	def upload(self, name, content, is_private=0, doctype=None, docname=None):
 		boundary = "----staffdock" + str(time.time_ns())
+		attach = (
+			f"--{boundary}\r\nContent-Disposition: form-data; name=\"doctype\"\r\n\r\n{doctype}\r\n"
+			f"--{boundary}\r\nContent-Disposition: form-data; name=\"docname\"\r\n\r\n{docname}\r\n"
+			if doctype
+			else ""
+		)
 		body = (
-			f"--{boundary}\r\nContent-Disposition: form-data; name=\"is_private\"\r\n\r\n{is_private}\r\n"
+			attach + f"--{boundary}\r\nContent-Disposition: form-data; name=\"is_private\"\r\n\r\n{is_private}\r\n"
 			f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}\"\r\n"
 			"Content-Type: application/octet-stream\r\n\r\n"
 		).encode() + content + f"\r\n--{boundary}--\r\n".encode()
@@ -394,5 +400,13 @@ try:
 	raise AssertionError("someone without a manager must be told to ask HR")
 except urllib.error.HTTPError as err:
 	assert "approver" in err.msg, err.msg
+
+# --- My documents: files HR attaches to the employee record, private to that employee
+letter = hana.upload("offer-letter.png", PNG, is_private=1, doctype="Employee", docname=emma_emp)
+assert any(d["file_url"] == letter for d in emma.api("my_documents")), "employee sees HR's file"
+assert emma.status(letter)[0] == 200, "employee can download it"
+assert olivia.status(letter)[0] in (403, 404) and all(d["file_url"] != letter for d in olivia.api("my_documents"))
+assert all(d["file_url"] != emma.api("my_profile")["image"] for d in emma.api("my_documents")), "profile photo isn't listed"
+hana.call("DELETE", "/api/resource/File/" + next(d["name"] for d in emma.api("my_documents") if d["file_url"] == letter))
 
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

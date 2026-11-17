@@ -808,3 +808,20 @@ def decide_expense(name, approve):
 	claim.flags.ignore_permissions = True
 	claim.submit()
 	return claim.approval_status
+
+
+@frappe.whitelist()
+def my_documents():
+	"""Files HR attached to the employee's record (contracts, letters), newest first."""
+	employee = frappe.get_doc("Employee", _my_employee())
+	return frappe.get_all(
+		"File",
+		filters={
+			"attached_to_doctype": "Employee",
+			"attached_to_name": employee.name,
+			"file_url": ["!=", employee.image or ""],
+			"is_folder": 0,
+		},
+		fields=["name", "file_name", "file_url", "file_size", "creation"],
+		order_by="creation desc",
+	)

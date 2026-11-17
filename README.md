@@ -18,6 +18,8 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Inventory**: review and issue requests, stock levels, receive stock.
 - **History** on every request: who did what, when.
 - **Only the buttons you can use**: actions come from the workflow, so people never see options they can't take.
+- **Clear feedback**: a short confirmation after every action, and a second click to confirm reject, withdraw,
+  discard and close.
 - **Row-level access**: employees see only their own records, managers their team's.
 - **Company domain lock**: only accounts on your email domain can exist (optional).
 

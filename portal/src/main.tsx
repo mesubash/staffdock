@@ -6,6 +6,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { Shell } from "@/components/Shell";
+import { ToastProvider } from "@/components/toast";
 import { call, type Me } from "@/lib/api";
 import { MeContext } from "@/lib/session";
 import { Approvals } from "@/pages/Approvals";
@@ -59,7 +60,9 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWind
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

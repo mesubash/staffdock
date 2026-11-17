@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Card, Empty, ErrorText, Page, formatDate } from "@/components/common";
+import { Card, Empty, ErrorText, Page, Skeleton, formatDate } from "@/components/common";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { applyAction, call, getDoc, getList, type Tasks } from "@/lib/api";
 import { useMe } from "@/lib/session";
@@ -20,9 +21,13 @@ export function MyAssets() {
     enabled: !!me.employee,
   });
   const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => call<Tasks>("staffdock.api.my_tasks") });
+  const toast = useToast();
   const acknowledge = useMutation({
     mutationFn: async (movement: string) => applyAction(await getDoc("Asset Movement", movement), "Acknowledge Receipt"),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      toast("Receipt confirmed");
+    },
   });
 
   const pending = tasks.data?.assets_to_acknowledge ?? [];
@@ -50,6 +55,7 @@ export function MyAssets() {
 
       <Card title="Company property with you">
         <ErrorText error={assets.error} />
+        {assets.isLoading ? <Skeleton /> : null}
         {!me.employee ? <Empty>Your account is not linked to an employee record. Contact HR.</Empty> : null}
         {assets.data?.length === 0 ? <Empty>No company assets are assigned to you.</Empty> : null}
         <ul className="divide-y divide-border">

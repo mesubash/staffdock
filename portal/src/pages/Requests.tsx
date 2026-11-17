@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { ACTION_LABELS, Card, Empty, ErrorText, HISTORY_LABELS, Page, StatusBadge, formatDate, selectClass } from "@/components/common";
+import { ACTION_LABELS, Card, ConfirmButton, Empty, ErrorText, HISTORY_LABELS, Page, Skeleton, StatusBadge, formatDate, selectClass } from "@/components/common";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,15 @@ import { cn } from "@/lib/utils";
 
 const ROW_FIELDS = ["name", "sd_employee_name", "sd_reason", "workflow_state", "status", "modified"];
 const CLOSED = ["Completed", "Manager Rejected", "Inventory Rejected", "Closed"];
+
+// Toast after a workflow action
+const DONE_MESSAGES: Record<string, string> = {
+  Submit: "Sent for approval",
+  Approve: "Approved",
+  Reject: "Rejected",
+  Close: "Request closed",
+  "Acknowledge Receipt": "Receipt confirmed",
+};
 
 export function RequestsList() {
   const me = useMe();
@@ -48,7 +58,7 @@ export function RequestsList() {
       </div>
       <Card>
         <ErrorText error={mine.error} />
-        {mine.isLoading ? <Empty>Loading…</Empty> : null}
+        {mine.isLoading ? <Skeleton /> : null}
         {rows && rows.length === 0 ? <Empty>{filter === "Open" ? "No open requests." : "You haven't requested anything yet."}</Empty> : null}
         <RequestTable rows={rows ?? []} />
       </Card>
@@ -102,6 +112,7 @@ export function RequestNew() {
         limit: 500,
       }),
   });
+  const toast = useToast();
   const [lines, setLines] = useState<Line[]>([{ item_code: "", qty: "1" }]);
   const [requiredBy, setRequiredBy] = useState(inDays(3));
   const [reason, setReason] = useState("");
@@ -124,6 +135,7 @@ export function RequestNew() {
     },
     onSuccess: (name) => {
       queryClient.invalidateQueries();
+      toast("Request sent");
       navigate({ to: "/requests/$name", params: { name } });
     },
   });
@@ -234,20 +246,28 @@ export function RequestDetail() {
     enabled: !!doc.data,
   });
 
-  const done = () => queryClient.invalidateQueries();
-  const act = useMutation({ mutationFn: (action: string) => applyAction(doc.data, action), onSuccess: done });
-  const issue = useMutation({ mutationFn: () => call("staffdock.api.issue_request", { name }), onSuccess: done });
+  const toast = useToast();
+  const done = (message: string) => {
+    queryClient.invalidateQueries();
+    toast(message);
+  };
+  const act = useMutation({
+    mutationFn: (action: string) => applyAction(doc.data, action),
+    onSuccess: (_, action) => done(DONE_MESSAGES[action] ?? "Done"),
+  });
+  const issue = useMutation({ mutationFn: () => call("staffdock.api.issue_request", { name }), onSuccess: () => done("Items issued") });
   const navigate = useNavigate();
   const discard = useMutation({
     mutationFn: () => call("staffdock.api.discard_request", { name }),
     onSuccess: () => {
       queryClient.invalidateQueries();
+      toast("Draft discarded");
       navigate({ to: "/requests" });
     },
   });
 
   if (doc.error) return <Page title={name}><ErrorText error={doc.error} /></Page>;
-  if (!doc.data) return <Page title={name}><Empty>Loading…</Empty></Page>;
+  if (!doc.data) return <Page title={name}><Skeleton rows={4} /></Page>;
   const d = doc.data;
   const canIssue = me.is_inventory && d.workflow_state === "Approved" && d.status !== "Issued";
   const canDiscard = d.owner === me.user && d.docstatus === 0 && (!d.workflow_state || d.workflow_state === "Draft");
@@ -301,20 +321,27 @@ export function RequestDetail() {
                 {issue.isPending ? "Issuing…" : "Issue items from store"}
               </Button>
             ) : null}
-            {actions.data?.map((t) => (
-              <Button
-                key={t.action}
-                variant={/reject/i.test(t.action) ? "destructive" : canIssue || t.action === "Close" ? "outline" : "default"}
-                disabled={act.isPending}
-                onClick={() => act.mutate(t.action)}
-              >
-                {ACTION_LABELS[t.action] ?? t.action}
-              </Button>
-            ))}
+            {actions.data?.map((t) =>
+              /reject|close/i.test(t.action) ? (
+                <ConfirmButton
+                  key={t.action}
+                  variant={t.action === "Close" ? "outline" : "destructive"}
+                  confirmLabel={`Click again to ${(ACTION_LABELS[t.action] ?? t.action).toLowerCase()}`}
+                  disabled={act.isPending}
+                  onConfirm={() => act.mutate(t.action)}
+                >
+                  {ACTION_LABELS[t.action] ?? t.action}
+                </ConfirmButton>
+              ) : (
+                <Button key={t.action} variant={canIssue ? "outline" : "default"} disabled={act.isPending} onClick={() => act.mutate(t.action)}>
+                  {ACTION_LABELS[t.action] ?? t.action}
+                </Button>
+              ),
+            )}
             {canDiscard ? (
-              <Button variant="ghost" disabled={discard.isPending} onClick={() => discard.mutate()}>
+              <ConfirmButton variant="ghost" confirmLabel="Click again to discard" disabled={discard.isPending} onConfirm={() => discard.mutate()}>
                 Discard
-              </Button>
+              </ConfirmButton>
             ) : null}
           </div>
         </Card>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Card, Empty, ErrorText, Page } from "@/components/common";
+import { Card, ConfirmButton, Empty, ErrorText, Page, Skeleton } from "@/components/common";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { call, getList, type RequestRow } from "@/lib/api";
 import { useMe } from "@/lib/session";
@@ -33,10 +34,14 @@ export function Approvals() {
         limit: 10,
       }),
   });
+  const toast = useToast();
   const decide = useMutation({
     mutationFn: ({ name, approve }: { name: string; approve: boolean }) =>
       call("staffdock.api.decide_leave", { name, approve: approve ? 1 : 0 }),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: (_, { approve }) => {
+      queryClient.invalidateQueries();
+      toast(approve ? "Leave approved" : "Leave rejected");
+    },
   });
 
   const loaded = leaves.data && requests.data;
@@ -45,6 +50,7 @@ export function Approvals() {
   return (
     <Page title="Approvals">
       <ErrorText error={leaves.error ?? requests.error ?? decide.error} />
+      {!loaded && !leaves.error && !requests.error ? <Skeleton /> : null}
       {nothing ? (
         <Card>
           <Empty>Nothing waiting for your approval.</Empty>
@@ -66,9 +72,9 @@ export function Approvals() {
                 <Button size="sm" disabled={decide.isPending} onClick={() => decide.mutate({ name: l.name, approve: true })}>
                   Approve
                 </Button>
-                <Button size="sm" variant="destructive" disabled={decide.isPending} onClick={() => decide.mutate({ name: l.name, approve: false })}>
+                <ConfirmButton size="sm" confirmLabel="Click again to reject" disabled={decide.isPending} onConfirm={() => decide.mutate({ name: l.name, approve: false })}>
                   Reject
-                </Button>
+                </ConfirmButton>
               </li>
             ))}
           </ul>

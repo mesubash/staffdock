@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Card, Empty, ErrorText, Page, formatDate } from "@/components/common";
+import { Card, Empty, ErrorText, Page, Skeleton, formatDate } from "@/components/common";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { call } from "@/lib/api";
 
@@ -40,9 +41,13 @@ function position(): Promise<{ latitude?: number; longitude?: number }> {
 export function CheckInCard() {
   const queryClient = useQueryClient();
   const today = useQuery({ queryKey: ["attendance", "today"], queryFn: () => call<Today>("staffdock.api.attendance_today") });
+  const toast = useToast();
   const toggle = useMutation({
     mutationFn: async () => call("staffdock.api.check_in_out", today.data?.geolocation_required ? await position() : {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attendance"] }),
+    onSuccess: (logType) => {
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      toast(logType === "IN" ? "Checked in" : "Checked out");
+    },
   });
   const t = today.data;
 
@@ -73,6 +78,7 @@ export function Attendance() {
       <CheckInCard />
       <Card title="Last 30 days">
         <ErrorText error={history.error} />
+        {history.isLoading ? <Skeleton /> : null}
         {history.data?.length === 0 ? <Empty>No check-ins yet.</Empty> : null}
         {history.data?.length ? (
           <table className="w-full text-sm">

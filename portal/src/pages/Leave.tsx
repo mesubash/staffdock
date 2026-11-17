@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Card, Empty, ErrorText, Page, formatDate, selectClass } from "@/components/common";
+import { Card, ConfirmButton, Empty, ErrorText, Page, Skeleton, formatDate, selectClass } from "@/components/common";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,8 +51,15 @@ export function leaveDates(l: LeaveRow) {
 export function Leave() {
   const queryClient = useQueryClient();
   const summary = useQuery({ queryKey: ["leave"], queryFn: () => call<Summary>("staffdock.api.leave_summary") });
+  const toast = useToast();
   const done = () => queryClient.invalidateQueries();
-  const withdraw = useMutation({ mutationFn: (name: string) => call("staffdock.api.withdraw_leave", { name }), onSuccess: done });
+  const withdraw = useMutation({
+    mutationFn: (name: string) => call("staffdock.api.withdraw_leave", { name }),
+    onSuccess: () => {
+      done();
+      toast("Leave withdrawn");
+    },
+  });
   const [applying, setApplying] = useState(false);
 
   const s = summary.data;
@@ -63,6 +71,7 @@ export function Leave() {
       }
     >
       <ErrorText error={summary.error} />
+      {summary.isLoading ? <Skeleton /> : null}
       {s && s.balances.length === 0 ? (
         <Card>
           <Empty>No leave has been allocated to you yet. Contact HR.</Empty>
@@ -110,9 +119,9 @@ export function Leave() {
               </div>
               <LeaveStatus status={l.status} />
               {l.status === "Open" && l.docstatus === 0 ? (
-                <Button size="sm" variant="ghost" disabled={withdraw.isPending} onClick={() => withdraw.mutate(l.name)}>
+                <ConfirmButton size="sm" variant="ghost" confirmLabel="Click again to withdraw" disabled={withdraw.isPending} onConfirm={() => withdraw.mutate(l.name)}>
                   Withdraw
-                </Button>
+                </ConfirmButton>
               ) : null}
             </li>
           ))}
@@ -126,10 +135,12 @@ function ApplyForm({ types, onDone, onCancel }: { types: string[]; onDone: () =>
   const today = new Date().toISOString().slice(0, 10);
   const empty = { leave_type: types[0] ?? "", from_date: today, to_date: today, half_day: false, reason: "" };
   const [form, setForm] = useState(empty);
+  const toast = useToast();
   const apply = useMutation({
     mutationFn: () => call("staffdock.api.apply_leave", { ...form, half_day: form.half_day ? 1 : 0 }),
     onSuccess: () => {
       setForm(empty);
+      toast("Leave requested");
       onDone();
     },
   });

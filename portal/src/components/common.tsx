@@ -1,5 +1,6 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -98,3 +99,56 @@ export function formatDate(value?: string) {
 
 export const selectClass =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+/** Grey placeholder rows while a list loads. */
+export function Skeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 py-2">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="h-10 animate-pulse rounded-md bg-muted" />
+      ))}
+    </div>
+  );
+}
+
+/** Destructive action that needs a second click: "Reject" becomes "Click again to reject" for 5 seconds. */
+export function ConfirmButton({
+  children,
+  confirmLabel,
+  onConfirm,
+  disabled,
+  variant = "destructive",
+  size = "default",
+}: {
+  children: ReactNode;
+  confirmLabel: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+  variant?: "destructive" | "ghost" | "outline";
+  size?: "default" | "sm";
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 5000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <Button
+      type="button"
+      size={size}
+      variant={armed ? "destructive" : variant}
+      disabled={disabled}
+      onClick={() => {
+        if (armed) {
+          setArmed(false);
+          onConfirm();
+        } else {
+          setArmed(true);
+        }
+      }}
+    >
+      {armed ? confirmLabel : children}
+    </Button>
+  );
+}

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CalendarPlus, ChevronRight, Plus } from "lucide-react";
 
-import { Card, Empty, ErrorText, Page, StatusBadge, formatDate } from "@/components/common";
+import { Card, Empty, ErrorText, Page, Skeleton, StatusBadge, formatDate } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { call, type Tasks } from "@/lib/api";
 import { CheckInCard } from "@/pages/Attendance";
@@ -91,7 +91,7 @@ export function Home() {
 
       <Card title={items.length ? `Needs your attention (${items.length})` : "Needs your attention"}>
         <ErrorText error={tasks.error} />
-        {tasks.isLoading ? <Empty>Loading…</Empty> : null}
+        {tasks.isLoading ? <Skeleton /> : null}
         {t && items.length === 0 ? <Empty>You're all caught up.</Empty> : null}
         <ul className="divide-y divide-border">
           {items.map((i) => (

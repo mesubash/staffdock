@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Card, Empty, ErrorText, Page, selectClass } from "@/components/common";
+import { Card, Empty, ErrorText, Page, Skeleton, selectClass } from "@/components/common";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,7 @@ function RequestQueues() {
   return (
     <>
       <ErrorText error={tasks.error} />
+      {tasks.isLoading ? <Skeleton /> : null}
       {tasks.data && !review.length && !issue.length ? (
         <Card>
           <Empty>Nothing to review or issue.</Empty>
@@ -82,19 +84,24 @@ function AssetRegister() {
   const names = Object.fromEntries((employees.data ?? []).map((e) => [e.name, e.employee_name]));
   const [choice, setChoice] = useState<Record<string, string>>({});
 
-  const done = () => queryClient.invalidateQueries();
+  const toast = useToast();
+  const done = (message: string) => {
+    queryClient.invalidateQueries();
+    toast(message);
+  };
   const issue = useMutation({
     mutationFn: (a: Asset) => call("staffdock.api.issue_asset", { asset: a.name, employee: choice[a.name] }),
-    onSuccess: done,
+    onSuccess: (_, a) => done(`${a.asset_name} issued to ${names[choice[a.name]] ?? "employee"}`),
   });
   const receive = useMutation({
     mutationFn: (a: Asset) => call("staffdock.api.receive_asset", { asset: a.name, condition: choice[a.name] }),
-    onSuccess: done,
+    onSuccess: (_, a) => done(`${a.asset_name} received back`),
   });
 
   return (
     <Card title="Asset register">
       <ErrorText error={assets.error ?? issue.error ?? receive.error} />
+      {assets.isLoading ? <Skeleton /> : null}
       {assets.data?.length === 0 ? <Empty>No assets yet.</Empty> : null}
       <ul className="divide-y divide-border">
         {assets.data?.map((a) => (
@@ -164,12 +171,14 @@ function Stock() {
         limit: 500,
       }),
   });
+  const toast = useToast();
   const [form, setForm] = useState({ item_code: "", qty: "", rate: "" });
   const receive = useMutation({
     mutationFn: () => call("staffdock.api.receive_stock", { item_code: form.item_code, qty: form.qty, rate: form.rate || 0 }),
     onSuccess: () => {
       setForm({ item_code: "", qty: "", rate: "" });
       queryClient.invalidateQueries({ queryKey: ["stock"] });
+      toast("Stock received");
     },
   });
 
@@ -177,6 +186,7 @@ function Stock() {
     <>
       <Card title="Stock in stores">
         <ErrorText error={levels.error} />
+        {levels.isLoading ? <Skeleton /> : null}
         {levels.data?.length === 0 ? <Empty>No stock yet.</Empty> : null}
         <table className="w-full text-sm">
           <thead className="text-left text-muted-foreground">

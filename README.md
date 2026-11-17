@@ -56,6 +56,7 @@ so stock and asset history stay in ERPNext's ledgers.
 | App Name, Logo | Sign-in page, portal header, browser tab |
 | Company Email Domain | Only accounts on this email domain can be created |
 | Default Store | Warehouse used for requests, issues and receipts |
+| Send Email Notifications | Also email every portal notice (needs a default outgoing Email Account) |
 
 ## Single sign-on
 
@@ -109,7 +110,8 @@ The seed runs the setup wizard (Acme Corp), adds a holiday list with a few publi
 and expense accounts, and creates one demo user per role:
 `emma@example.com` (employee), `max@` (her manager), `ian@` (inventory), `olivia@` (another team), `hana@` (HR).
 
-Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk
+Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk ·
+Dev mail (Mailpit): http://localhost:8025 — the seed points outgoing email there.
 
 Portal with hot reload: `yarn install && yarn dev` (repo root), open http://staffdock.localhost:8080/staff
 (set `ignore_csrf: 1` in the dev site config).

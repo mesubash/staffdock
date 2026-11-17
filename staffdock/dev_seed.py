@@ -107,6 +107,7 @@ def run(password):
 	seed_leave(employee_by_email.values())
 	seed_announcements()
 	seed_expenses(abbr)
+	seed_dev_mail()
 
 	frappe.db.commit()
 	return employee_by_email
@@ -211,6 +212,25 @@ def seed_expenses(abbr):
 		if not any(a.company == COMPANY for a in doc.accounts):
 			doc.append("accounts", {"company": COMPANY, "default_account": f"{account} - {abbr}"})
 			doc.save()
+
+
+def seed_dev_mail():
+	"""Outgoing mail to the Mailpit container from compose.dev.yml (view at http://localhost:8025)."""
+	if frappe.db.exists("Email Account", "StaffDock Dev Mail"):
+		return
+	frappe.get_doc(
+		{
+			"doctype": "Email Account",
+			"email_account_name": "StaffDock Dev Mail",
+			"email_id": f"staffdock@{DOMAIN}",
+			"enable_outgoing": 1,
+			"default_outgoing": 1,
+			"smtp_server": "mailpit",
+			"smtp_port": 1025,
+			"use_tls": 0,
+			"no_smtp_authentication": 1,
+		}
+	).insert()
 
 
 def seed_announcements():

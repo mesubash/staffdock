@@ -18,13 +18,14 @@ CREDS = dict(
 	line.split("=", 1) for line in (pathlib.Path(__file__).parent.parent / "development/site-credentials.txt").read_text().split()
 )
 PW = CREDS["test_password"]
+ADMIN_PW = CREDS["password"]
 
 
 class Session:
-	def __init__(self, user):
+	def __init__(self, user, password=None):
 		self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 		self.csrf = ""
-		self.call("POST", "/api/method/login", {"usr": user, "pwd": PW})
+		self.call("POST", "/api/method/login", {"usr": user, "pwd": password or PW})
 		# Same as the browser: the portal page hands out the session's CSRF token
 		page = self.opener.open(BASE + "/staff").read().decode()
 		self.csrf = re.search(r'csrf_token = "([^"]*)"', page).group(1)
@@ -185,6 +186,14 @@ assert emma.call("POST", "/api/method/frappe.model.workflow.get_transitions", {"
 assert not emma.ok("POST", "/api/method/staffdock.api.discard_request", {"name": rej["name"]}), "sent requests cannot be discarded"
 
 # --- Updates feed tells each person what happened (notifications are written after commit)
+def eventually(check):
+	for _ in range(90):
+		if check():
+			return True
+		time.sleep(0.5)
+	return False
+
+
 def eventually_updated(session, text):
 	# Notifications go through the background worker; under load that can take ~30s
 	for _ in range(90):
@@ -408,5 +417,28 @@ assert emma.status(letter)[0] == 200, "employee can download it"
 assert olivia.status(letter)[0] in (403, 404) and all(d["file_url"] != letter for d in olivia.api("my_documents"))
 assert all(d["file_url"] != emma.api("my_profile")["image"] for d in emma.api("my_documents")), "profile photo isn't listed"
 hana.call("DELETE", "/api/resource/File/" + next(d["name"] for d in emma.api("my_documents") if d["file_url"] == letter))
+
+# --- Email notifications follow the StaffDock setting (an admin switches it)
+admin = Session("Administrator", ADMIN_PW)
+SETTINGS = "/api/resource/StaffDock Settings/StaffDock Settings"
+
+def queued_for(user, reference):
+	q = admin.call("GET", "/api/resource/Email Queue?fields=" + urllib.request.quote('["name"]') + "&filters=" + urllib.request.quote(json.dumps([["reference_name", "=", reference]])))
+	return any(user in json.dumps(admin.get("Email Queue", row["name"])) for row in q)
+
+def new_request(reason):
+	r = emma.call("POST", "/api/resource/Material Request", {"schedule_date": "2026-12-31", "sd_reason": reason, "items": [{"item_code": "A4-PAPER", "qty": 1, "warehouse": "Stores - AC", "schedule_date": "2026-12-31"}]})
+	emma.act("Material Request", r["name"], "Submit")
+	return r["name"]
+
+admin.call("PUT", SETTINGS, {"send_email_notifications": 1})
+try:
+	mailed = new_request("e2e email on")
+	assert eventually(lambda: queued_for("max@example.com", mailed)), "manager is emailed when email is on"
+finally:
+	admin.call("PUT", SETTINGS, {"send_email_notifications": 0})
+quiet = new_request("e2e email off")
+time.sleep(5)
+assert not queued_for("max@example.com", quiet), "no email when the setting is off"
 
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

@@ -20,6 +20,12 @@ services:
   redis-queue:
     image: docker.io/redis:alpine
 
+  # Catches every email the dev site sends: http://localhost:8025
+  mailpit:
+    image: docker.io/axllent/mailpit:v1.21.0
+    ports:
+      - 127.0.0.1:8025:8025
+
   frappe:
     image: docker.io/frappe/bench:latest
     command: sleep infinity

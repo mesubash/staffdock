@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 DEFAULT_LOGO = "/assets/staffdock/images/logo.svg"
@@ -7,10 +8,22 @@ DEFAULT_LOGO = "/assets/staffdock/images/logo.svg"
 class StaffDockSettings(Document):
 	def validate(self):
 		self.email_domain = (self.email_domain or "").strip().lower().lstrip("@")
+		if self.send_email_notifications and not frappe.db.exists(
+			"Email Account", {"enable_outgoing": 1, "default_outgoing": 1}
+		):
+			frappe.msgprint(
+				_("Emails will wait in the queue until you add a default outgoing Email Account."),
+				title=_("No outgoing email account"),
+				indicator="orange",
+			)
 
 	def on_update(self):
 		frappe.clear_document_cache(self.doctype, self.doctype)
 		sync_branding()
+		if self.has_value_changed("send_email_notifications"):
+			from staffdock.setup import setup_notifications
+
+			setup_notifications()
 
 
 def get():
@@ -21,6 +34,7 @@ def get():
 		logo=s.logo or DEFAULT_LOGO,
 		email_domain=s.email_domain or "",
 		default_warehouse=s.default_warehouse,
+		send_email_notifications=bool(s.send_email_notifications),
 	)
 
 

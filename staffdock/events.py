@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.model.workflow import get_workflow_name
 
+from staffdock.staffdock.doctype.staffdock_settings import staffdock_settings
+
 
 def material_request_validate(doc, method=None):
 	"""Stamp requester and their reporting manager's user on new requests."""
@@ -42,6 +44,7 @@ def asset_movement_on_submit(doc, method=None):
 		user = row.to_employee and frappe.db.get_value("Employee", row.to_employee, "user_id")
 		if not user:
 			continue
+		subject = _("{0} was assigned to you. Please confirm you received it").format(row.asset_name or row.asset)
 		frappe.get_doc(
 			{
 				"doctype": "Notification Log",
@@ -49,9 +52,15 @@ def asset_movement_on_submit(doc, method=None):
 				"type": "Alert",
 				"document_type": doc.doctype,
 				"document_name": doc.name,
-				"subject": _("{0} was assigned to you. Please confirm you received it").format(row.asset_name or row.asset),
+				"subject": subject,
 			}
 		).insert(ignore_permissions=True)
+		if staffdock_settings.get().send_email_notifications:
+			frappe.sendmail(
+				recipients=[user],
+				subject=subject,
+				message=f'<p>{subject}</p><p><a href="{frappe.utils.get_url("/staff/assets")}">Open StaffDock</a></p>',
+			)
 
 
 # People who manage other employees' records must not be limited to their own Employee record.

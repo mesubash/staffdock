@@ -296,21 +296,28 @@ def setup_notifications():
 			"Your {{ doc.leave_type }} from {{ frappe.utils.formatdate(doc.from_date) }} was {{ doc.status | lower }}",
 		),
 	]
+	email = staffdock_settings.get().send_email_notifications
+	portal_link = "<p><a href=\"{{ frappe.utils.get_url('/staff') }}\">Open StaffDock</a></p>"
 	for name, doctype, event, field, condition, recipient, subject in notifications:
-		n = frappe.get_doc("Notification", name) if frappe.db.exists("Notification", name) else frappe.new_doc("Notification")
-		n.update(
-			{
-				"name": name,
-				"__newname": name,
-				"enabled": 1,
-				"channel": "System Notification",
-				"document_type": doctype,
-				"event": event,
-				"value_changed": field,
-				"condition": condition,
-				"subject": subject,
-				"message": subject,
-			}
-		)
-		n.set("recipients", [recipient])
-		n.save(ignore_permissions=True)
+		# One in-app notice, plus an email twin that follows the StaffDock setting
+		for title, channel, enabled, message in (
+			(name, "System Notification", 1, subject),
+			(f"{name} (Email)", "Email", int(email), f"<p>{subject}</p>{portal_link}"),
+		):
+			n = frappe.get_doc("Notification", title) if frappe.db.exists("Notification", title) else frappe.new_doc("Notification")
+			n.update(
+				{
+					"name": title,
+					"__newname": title,
+					"enabled": enabled,
+					"channel": channel,
+					"document_type": doctype,
+					"event": event,
+					"value_changed": field,
+					"condition": condition,
+					"subject": subject,
+					"message": message,
+				}
+			)
+			n.set("recipients", [recipient])
+			n.save(ignore_permissions=True)

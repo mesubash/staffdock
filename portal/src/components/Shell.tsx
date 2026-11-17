@@ -15,6 +15,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { to: "/leave", label: "Leave", show: true },
     { to: "/requests", label: "Requests", show: true },
     { to: "/assets", label: "Assets", show: true },
+    { to: "/people", label: "People", show: true },
     { to: "/approvals", label: "Approvals", show: me.is_manager || me.is_leave_approver },
     { to: "/inventory", label: "Inventory", show: me.is_inventory },
   ].filter((n) => n.show);

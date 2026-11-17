@@ -12,6 +12,8 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
 - **My profile**: see your job details and manager; update phone, personal email, address, emergency contact
   and photo. Everything else stays with HR.
+- **People**: company directory with search, who's out today (from approved leave; the leave type stays
+  private) and upcoming public holidays.
 - **Attendance**: check in / check out from the portal (server time only, double clicks ignored),
   hours today and the last 30 days. Stored as Frappe HR Employee Checkins; optional location when HR enables it.
 - **Leave**: balances, apply (incl. half day), manager approves or rejects, withdraw while pending.
@@ -96,7 +98,7 @@ bench --site staffdock.localhost execute staffdock.dev_seed.run --kwargs '{"pass
 bench start
 ```
 
-The seed runs the setup wizard (Acme Corp), adds a holiday list and leave allocations, and creates one demo user per role:
+The seed runs the setup wizard (Acme Corp), adds a holiday list with a few public holidays and leave allocations, and creates one demo user per role:
 `emma@example.com` (employee), `max@` (her manager), `ian@` (inventory), `olivia@` (another team), `hana@` (HR).
 
 Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk

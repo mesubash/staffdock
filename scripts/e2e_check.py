@@ -319,4 +319,19 @@ assert not olivia.ok("POST", "/api/method/staffdock.api.set_profile_photo", {"fi
 emma.api("set_profile_photo", file_url=photo)
 assert emma.api("my_profile")["image"] == photo and emma.api("me")["image"] == photo
 
+# --- People: directory without personal fields, holidays, who's out today
+team = olivia.api("people")
+names = {p["employee_name"] for p in team["employees"]}
+assert {"Emma Employee", "Max Manager", "Ian Inventory", "Olivia Other", "Hana HR"} <= names, names
+assert all("cell_number" not in p and "personal_email" not in p for p in team["employees"]), "work details only"
+assert team["holidays"] and all(h["description"] not in ("Saturday", "Sunday") for h in team["holidays"]), team["holidays"]
+if datetime.date.today().weekday() < 5:
+	today = datetime.date.today().isoformat()
+	away = emma.api("apply_leave", leave_type="Casual Leave", from_date=today, to_date=today, reason="e2e out today")
+	max.api("decide_leave", name=away, approve=1)
+	out = olivia.api("people")["out_today"]
+	assert any(o["employee_name"] == "Emma Employee" for o in out) and all("leave_type" not in o for o in out), out
+	hana.call("POST", "/api/method/frappe.client.cancel", {"doctype": "Leave Application", "name": away})
+	assert all(o["employee_name"] != "Emma Employee" for o in olivia.api("people")["out_today"])
+
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

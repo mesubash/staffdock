@@ -529,3 +529,54 @@ def set_profile_photo(file_url):
 	employee.save()
 	frappe.db.set_value("User", frappe.session.user, "user_image", file_url)
 	return file_url
+
+
+# --- People: directory, who's out today, upcoming holidays. Work contact details only.
+
+
+@frappe.whitelist()
+def people():
+	from hrms.utils.holiday_list import get_holiday_list_for_employee
+
+	today = frappe.utils.today()
+	employees = frappe.get_all(
+		"Employee",
+		filters={"status": "Active"},
+		fields=["name", "employee_name", "designation", "department", "company_email", "image"],
+		order_by="employee_name asc",
+		ignore_permissions=True,
+	)
+	departments = {
+		d.name: d.department_name for d in frappe.get_all("Department", fields=["name", "department_name"])
+	}
+	for e in employees:
+		e.department = departments.get(e.department, e.department)
+
+	# Who's away: approved leave covering today. The leave type stays private.
+	out = frappe.get_all(
+		"Leave Application",
+		filters={"status": "Approved", "docstatus": 1, "from_date": ["<=", today], "to_date": [">=", today]},
+		fields=["employee", "to_date"],
+		ignore_permissions=True,
+	)
+	by_id = {e.name: e for e in employees}
+	out_today = [
+		{"employee_name": by_id[o.employee].employee_name, "image": by_id[o.employee].image, "back_after": o.to_date}
+		for o in out
+		if o.employee in by_id
+	]
+
+	holidays = []
+	holiday_list = get_holiday_list_for_employee(_my_employee(), raise_exception=False)
+	if holiday_list:
+		holidays = frappe.get_all(
+			"Holiday",
+			filters={"parent": holiday_list, "holiday_date": [">=", today], "weekly_off": 0},
+			fields=["holiday_date", "description"],
+			order_by="holiday_date asc",
+			limit=5,
+		)
+		for h in holidays:
+			h.description = frappe.utils.strip_html(h.description or "")
+
+	return {"employees": employees, "out_today": out_today, "holidays": holidays}

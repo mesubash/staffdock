@@ -128,13 +128,17 @@ ASSET_ITEMS = [
 
 
 YEAR = str(frappe.utils.getdate().year)
+# (month-day, name) — demo public holidays
+PUBLIC_HOLIDAYS = [("01-01", "New Year's Day"), ("12-25", "Christmas Day"), ("12-31", "New Year's Eve")]
 # (leave type, days per year)
 LEAVE_ALLOCATIONS = [("Casual Leave", 12), ("Sick Leave", 6)]
 
 
 def seed_leave(employees):
 	holiday_list = f"{COMPANY} {YEAR}"
-	if not frappe.db.exists("Holiday List", holiday_list):
+	if frappe.db.exists("Holiday List", holiday_list):
+		hl = frappe.get_doc("Holiday List", holiday_list)
+	else:
 		hl = frappe.get_doc(
 			{
 				"doctype": "Holiday List",
@@ -146,7 +150,11 @@ def seed_leave(employees):
 		for day in ("Saturday", "Sunday"):
 			hl.weekly_off = day
 			hl.get_weekly_off_dates()
-		hl.insert()
+	taken = {str(h.holiday_date) for h in hl.holidays}
+	for date, description in PUBLIC_HOLIDAYS:
+		if f"{YEAR}-{date}" not in taken:
+			hl.append("holidays", {"holiday_date": f"{YEAR}-{date}", "description": description})
+	hl.save()
 	frappe.db.set_value("Company", COMPANY, "default_holiday_list", holiday_list)
 	# Frappe HR v16 reads holidays from an assignment, not the company default
 	if not frappe.db.exists("Holiday List Assignment", {"assigned_to": COMPANY, "docstatus": 1}):

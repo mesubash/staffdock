@@ -56,11 +56,11 @@ Requires Frappe v16, ERPNext v16 and Frappe HR v16.
 
 ```sh
 bench get-app https://github.com/mesubash/staffdock
-cd apps/staffdock/portal && bun install && bun run build && cd -
 bench --site <site> install-app staffdock
 ```
 
-The portal is at `https://<site>/staff`.
+`bench get-app` builds the staff portal as part of the normal asset build (it needs Node and yarn,
+which every Frappe bench already has). The portal is at `https://<site>/staff`.
 
 ## Development
 
@@ -97,7 +97,7 @@ The seed runs the setup wizard (Acme Corp), adds a holiday list and leave alloca
 
 Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk
 
-Portal with hot reload: `cd portal && bun run dev`, open http://staffdock.localhost:8080/staff
+Portal with hot reload: `yarn install && yarn dev` (repo root), open http://staffdock.localhost:8080/staff
 (set `ignore_csrf: 1` in the dev site config).
 
 ### End-to-end check

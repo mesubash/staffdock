@@ -1,0 +1,11 @@
+{
+  "name": "staffdock",
+  "private": true,
+  "workspaces": [
+    "portal"
+  ],
+  "scripts": {
+    "build": "cd portal && yarn build",
+    "dev": "cd portal && yarn dev"
+  }
+}

@@ -46,7 +46,11 @@ bench set-config -g redis_socketio "$REDIS_QUEUE"
 # Link this checkout into the bench so code changes show up live
 if [[ ! -e apps/staffdock ]]; then
 	ln -s "$APP_DIR" apps/staffdock
-	grep -qx staffdock sites/apps.txt || echo staffdock >> sites/apps.txt
+	# apps.txt has no trailing newline; add the app as its own line and drop blank lines
+	if ! grep -qx staffdock sites/apps.txt; then
+		printf '\nstaffdock\n' >> sites/apps.txt
+		sed -i.bak '/^$/d' sites/apps.txt && rm -f sites/apps.txt.bak
+	fi
 	if command -v uv > /dev/null; then
 		uv pip install --quiet -e apps/staffdock --python env/bin/python
 	else

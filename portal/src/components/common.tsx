@@ -44,15 +44,15 @@ export function ErrorText({ error }: { error: unknown }) {
 // Workflow states in plain words, with a badge color. Unknown states fall back to their raw name.
 const STATES: Record<string, { label: string; tone: string }> = {
   Draft: { label: "Draft", tone: "bg-muted text-muted-foreground" },
-  "Pending Manager Approval": { label: "With manager", tone: "bg-amber-100 text-amber-800" },
-  "Pending Inventory Review": { label: "With inventory", tone: "bg-amber-100 text-amber-800" },
-  "Pending Acknowledgement": { label: "To confirm", tone: "bg-amber-100 text-amber-800" },
-  Approved: { label: "Approved", tone: "bg-blue-100 text-blue-800" },
-  Issued: { label: "Issued", tone: "bg-blue-100 text-blue-800" },
-  Completed: { label: "Received", tone: "bg-green-100 text-green-800" },
-  Acknowledged: { label: "Confirmed", tone: "bg-green-100 text-green-800" },
-  "Manager Rejected": { label: "Rejected", tone: "bg-red-100 text-red-800" },
-  "Inventory Rejected": { label: "Rejected", tone: "bg-red-100 text-red-800" },
+  "Pending Manager Approval": { label: "With manager", tone: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" },
+  "Pending Inventory Review": { label: "With inventory", tone: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" },
+  "Pending Acknowledgement": { label: "To confirm", tone: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" },
+  Approved: { label: "Approved", tone: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300" },
+  Issued: { label: "Issued", tone: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300" },
+  Completed: { label: "Received", tone: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300" },
+  Acknowledged: { label: "Confirmed", tone: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300" },
+  "Manager Rejected": { label: "Rejected", tone: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300" },
+  "Inventory Rejected": { label: "Rejected", tone: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300" },
   Closed: { label: "Closed", tone: "bg-muted text-muted-foreground" },
 };
 

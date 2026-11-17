@@ -29,10 +29,10 @@ export function money(amount: number, currency: string) {
 }
 
 function claimState(c: Claim): [string, string] {
-  if (c.approval_status === "Rejected") return ["Rejected", "bg-red-100 text-red-800"];
-  if (c.status === "Paid") return ["Paid", "bg-green-100 text-green-800"];
-  if (c.approval_status === "Approved") return ["Approved, to be paid", "bg-blue-100 text-blue-800"];
-  return ["Waiting for approval", "bg-amber-100 text-amber-800"];
+  if (c.approval_status === "Rejected") return ["Rejected", "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"];
+  if (c.status === "Paid") return ["Paid", "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"];
+  if (c.approval_status === "Approved") return ["Approved, to be paid", "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"];
+  return ["Waiting for approval", "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"];
 }
 
 export function ClaimStatus({ claim }: { claim: Claim }) {

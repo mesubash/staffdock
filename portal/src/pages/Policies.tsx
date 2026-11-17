@@ -62,7 +62,7 @@ export function Policies() {
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-xs font-medium",
-                    p.acknowledged ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800",
+                    p.acknowledged ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300" : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
                   )}
                 >
                   {p.acknowledged ? "Acknowledged" : "To acknowledge"}

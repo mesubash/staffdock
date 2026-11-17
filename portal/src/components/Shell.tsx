@@ -24,13 +24,16 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-secondary">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-card focus:px-3 focus:py-2 focus:text-sm">
+        Skip to content
+      </a>
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 py-3 font-semibold">
             <img src={BRAND.logo} alt="" className="size-7" />
             <span className="hidden sm:inline">{BRAND.title}</span>
           </Link>
-          <nav className="hidden flex-1 gap-1 lg:flex">
+          <nav aria-label="Main" className="hidden flex-1 gap-1 lg:flex">
             {nav.map((n) => (
               <Link
                 key={n.to}
@@ -53,7 +56,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />} Menu
           </button>
           {me.has_desk ? (
-            <a href="/desk" title="Admin console" className="rounded-md p-2 text-muted-foreground hover:bg-accent">
+            <a href="/desk" title="Admin console" aria-label="Admin console" className="rounded-md p-2 text-muted-foreground hover:bg-accent">
               <Settings className="size-4" />
             </a>
           ) : null}
@@ -68,6 +71,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <button
             type="button"
             title="Sign out"
+            aria-label="Sign out"
             className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-accent"
             onClick={async () => {
               await logout().catch(() => undefined);
@@ -79,7 +83,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       {menuOpen ? (
-        <nav className="border-b border-border bg-card px-4 py-2 lg:hidden">
+        <nav aria-label="Main" className="border-b border-border bg-card px-4 py-2 lg:hidden">
           {nav.map((n) => (
             <Link
               key={n.to}
@@ -94,7 +98,7 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
       ) : null}
-      <main className="flex-1">{children}</main>
+      <main id="main" className="flex-1">{children}</main>
     </div>
   );
 }

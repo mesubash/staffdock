@@ -3,8 +3,8 @@
 @import "tw-animate-css";
 
 /*
- * Auth, /help and /legal pages render inside [data-theme="light"] and stay light
- * regardless of the OS setting; everything else keeps following prefers-color-scheme.
+ * The portal follows the OS light/dark setting. Anything rendered inside [data-theme="light"]
+ * stays light regardless.
  * Keep this in step with the dark-token media query below.
  */
 @custom-variant dark {
@@ -373,3 +373,9 @@
 .rich ol { list-style: decimal; padding-left: 1.25rem; margin: 0.5em 0; }
 .rich a { text-decoration: underline; }
 .rich h1, .rich h2, .rich h3 { font-weight: 600; margin: 0.75em 0 0.25em; }
+
+/* Keyboard focus is always visible on links and custom controls */
+:where(a, button, select, input, textarea, summary):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

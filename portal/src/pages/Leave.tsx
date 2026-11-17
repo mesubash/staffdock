@@ -29,9 +29,9 @@ type Summary = {
 };
 
 const LEAVE_STYLE: Record<string, string> = {
-  Open: "bg-amber-100 text-amber-800",
-  Approved: "bg-green-100 text-green-800",
-  Rejected: "bg-red-100 text-red-800",
+  Open: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+  Approved: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300",
+  Rejected: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300",
   Cancelled: "bg-muted text-muted-foreground",
 };
 

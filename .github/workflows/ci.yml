@@ -52,7 +52,7 @@ jobs:
         image: axllent/mailpit:v1.21.0
         ports: ["1025:1025"]
     env:
-      BENCH_PARENT: ${{ runner.temp }}/bench
+      BENCH_PARENT: /home/runner/bench
       DB_HOST: 127.0.0.1
       DB_ROOT_PASSWORD: root
       REDIS_CACHE: redis://127.0.0.1:6379

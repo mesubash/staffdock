@@ -3,14 +3,11 @@
 [![CI](https://github.com/mesubash/staffdock/actions/workflows/ci.yml/badge.svg)](https://github.com/mesubash/staffdock/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
-**Open-source employee management system (EMS) for Frappe / ERPNext.**
+A simple staff portal for Frappe HR and ERPNext.
 
-StaffDock gives every employee one simple portal for everyday work: attendance, leave, expenses, item
-requests, company assets, the people directory and company policies. Managers approve from the same place.
-HR and admins keep the full ERPNext / Frappe HR desk behind it.
-
-ERPNext is powerful, but its desk is too much for someone who just wants to apply for leave. StaffDock keeps
-the data in ERPNext and Frappe HR, and puts a small, role-aware portal in front of it.
+Employees check in, apply for leave, claim expenses, request items and see the company assets they hold.
+Managers approve from the same place. HR and admins keep using the ERPNext / Frappe HR desk, where all the
+data stays.
 
 ## Features
 

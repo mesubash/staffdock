@@ -1,7 +1,7 @@
 app_name = "staffdock"
 app_title = "StaffDock"
 app_publisher = "Subash Singh Dhami"
-app_description = "Open-source employee management system for Frappe/ERPNext"
+app_description = "A simple staff portal for Frappe HR and ERPNext"
 app_email = "subashdhamee@gmail.com"
 app_license = "agpl-3.0"
 

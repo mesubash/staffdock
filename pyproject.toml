@@ -3,7 +3,7 @@ name = "staffdock"
 authors = [
     { name = "Subash Singh Dhami", email = "subashdhamee@gmail.com"}
 ]
-description = "Open-source employee management system (EMS) for Frappe/ERPNext"
+description = "A simple staff portal for Frappe HR and ERPNext"
 requires-python = ">=3.14"
 readme = "README.md"
 license = "AGPL-3.0-only"

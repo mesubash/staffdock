@@ -1,7 +1,7 @@
 # StaffDock
 
 [![CI](https://github.com/mesubash/staffdock/actions/workflows/ci.yml/badge.svg)](https://github.com/mesubash/staffdock/actions/workflows/ci.yml)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
 **Open-source employee management system (EMS) for Frappe / ERPNext.**
 
@@ -146,4 +146,5 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 ## License
 
-GPL-3.0. See [LICENSE](LICENSE).
+AGPL-3.0. You can use, change and share StaffDock freely; if you distribute a modified version or offer
+one to others as an online service, you must share its source under the same license. See [LICENSE](LICENSE).

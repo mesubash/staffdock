@@ -3,7 +3,7 @@ app_title = "StaffDock"
 app_publisher = "Subash Singh Dhami"
 app_description = "Open-source employee management system for Frappe/ERPNext"
 app_email = "subashdhamee@gmail.com"
-app_license = "gpl-3.0"
+app_license = "agpl-3.0"
 
 # Staff portal (React app in /portal, built into public/portal)
 website_route_rules = [{"from_route": "/staff/<path:app_path>", "to_route": "staff"}]

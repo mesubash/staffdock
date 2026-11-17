@@ -5,7 +5,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## [0.1.0] - 2026-11-17
 
-First public release. Requires Frappe v16, ERPNext v16 and Frappe HR v16.
+First public release, licensed under AGPL-3.0. Requires Frappe v16, ERPNext v16 and Frappe HR v16.
 
 ### Added
 - Staff portal at `/staff`, served by Frappe, using Frappe's own sign-in page.

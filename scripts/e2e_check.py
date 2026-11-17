@@ -440,6 +440,8 @@ finally:
 quiet = new_request("e2e email off")
 time.sleep(5)
 assert not queued_for("max@example.com", quiet), "no email when the setting is off"
+for leftover in (mailed, quiet):  # don't leave them waiting in Max's queue
+	max.act("Material Request", leftover, "Reject")
 
 # --- Feature switches: off features vanish from the portal and refuse their endpoints
 admin.call("PUT", SETTINGS, {"feature_leave": 0, "feature_expenses": 0})

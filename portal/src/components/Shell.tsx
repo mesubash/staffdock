@@ -29,10 +29,10 @@ export function Shell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 py-3 font-semibold">
             <img src={BRAND.logo} alt="" className="size-7" />
-            <span className="hidden sm:inline">{BRAND.title}</span>
+            <span className="hidden whitespace-nowrap sm:inline lg:hidden xl:inline">{BRAND.title}</span>
           </Link>
           <nav aria-label="Main" className="hidden flex-1 gap-1 lg:flex">
             {nav.map((n) => (
@@ -64,7 +64,7 @@ export function Shell({ children }: { children: ReactNode }) {
           {me.employee ? (
             <Link to="/profile" title="My profile" className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent">
               <Avatar name={me.full_name} image={me.image} size="size-7" />
-              <span className="hidden lg:inline">{me.full_name}</span>
+              <span className="hidden whitespace-nowrap 2xl:inline">{me.full_name}</span>
             </Link>
           ) : (
             <span className="hidden text-sm text-muted-foreground md:inline">{me.full_name}</span>

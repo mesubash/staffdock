@@ -21,7 +21,8 @@ class StaffDockSettings(Document):
 	def on_update(self):
 		frappe.clear_document_cache(self.doctype, self.doctype)
 		sync_branding()
-		if self.has_value_changed("send_email_notifications"):
+		# During install/migrate, setup.after_migrate builds notifications once roles exist
+		if self.has_value_changed("send_email_notifications") and not (frappe.flags.in_install or frappe.flags.in_migrate):
 			from staffdock.setup import setup_notifications
 
 			setup_notifications()

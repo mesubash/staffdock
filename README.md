@@ -59,6 +59,7 @@ so stock and asset history stay in ERPNext's ledgers.
 | Company Email Domain | Only accounts on this email domain can be created |
 | Default Store | Warehouse used for requests, issues and receipts |
 | Send Email Notifications | Also email every portal notice (needs a default outgoing Email Account) |
+| Features | Switch off Requests/Assets/Inventory, Attendance, Leave, Expenses, People or Announcements/Policies; they disappear from the portal |
 
 ## Single sign-on
 

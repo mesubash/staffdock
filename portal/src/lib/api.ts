@@ -136,6 +136,8 @@ export type Me = {
   is_inventory: boolean;
   has_desk: boolean;
   default_warehouse: string;
+  date_format: string;
+  features: Record<"inventory" | "attendance" | "leave" | "expenses" | "people" | "news", boolean>;
 };
 
 export type RequestRow = {
@@ -151,8 +153,6 @@ export type Tasks = {
   to_approve: RequestRow[];
   requests_to_acknowledge: RequestRow[];
   assets_to_acknowledge: { name: string; asset: string; asset_name: string; modified: string }[];
-  open_requests: number;
-  my_assets: number;
   leaves_to_approve: import("@/pages/Leave").LeaveRow[];
   expenses_to_approve: { name: string; employee_name: string; total_claimed_amount: number; currency: string }[];
   policies_to_acknowledge: { name: string; title: string; version: string }[];

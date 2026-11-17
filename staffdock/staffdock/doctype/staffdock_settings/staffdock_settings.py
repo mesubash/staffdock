@@ -3,6 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 
 DEFAULT_LOGO = "/assets/staffdock/images/logo.svg"
+FEATURES = ("inventory", "attendance", "leave", "expenses", "people", "news")
 
 
 class StaffDockSettings(Document):
@@ -35,6 +36,7 @@ def get():
 		email_domain=s.email_domain or "",
 		default_warehouse=s.default_warehouse,
 		send_email_notifications=bool(s.send_email_notifications),
+		features={f: bool(s.get(f"feature_{f}")) for f in FEATURES},
 	)
 
 
@@ -43,3 +45,12 @@ def sync_branding():
 	s = get()
 	frappe.db.set_single_value("Website Settings", {"app_name": s.app_title, "app_logo": s.logo})
 	frappe.clear_cache()
+
+
+def switch_on_new_features():
+	"""A switch added in an update has no stored value yet, which Frappe reads as off; start it on."""
+	for feature in FEATURES:
+		field = f"feature_{feature}"
+		if not frappe.db.sql("select 1 from `tabSingles` where doctype=%s and field=%s", ("StaffDock Settings", field)):
+			frappe.db.set_single_value("StaffDock Settings", field, 1)
+	frappe.clear_document_cache("StaffDock Settings", "StaffDock Settings")

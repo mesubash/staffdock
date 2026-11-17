@@ -8,7 +8,15 @@
   "logo",
   "email_domain",
   "default_warehouse",
-  "send_email_notifications"
+  "send_email_notifications",
+  "features_section",
+  "feature_inventory",
+  "feature_attendance",
+  "feature_leave",
+  "features_column",
+  "feature_expenses",
+  "feature_people",
+  "feature_news"
  ],
  "fields": [
   {
@@ -43,11 +51,57 @@
    "fieldname": "send_email_notifications",
    "fieldtype": "Check",
    "label": "Send Email Notifications"
+  },
+  {
+   "fieldname": "features_section",
+   "fieldtype": "Section Break",
+   "label": "Features",
+   "description": "Turn off what your company doesn't use; it disappears from the staff portal."
+  },
+  {
+   "default": "1",
+   "fieldname": "feature_inventory",
+   "fieldtype": "Check",
+   "label": "Requests, Assets and Inventory"
+  },
+  {
+   "default": "1",
+   "fieldname": "feature_attendance",
+   "fieldtype": "Check",
+   "label": "Attendance"
+  },
+  {
+   "default": "1",
+   "fieldname": "feature_leave",
+   "fieldtype": "Check",
+   "label": "Leave"
+  },
+  {
+   "fieldname": "features_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "feature_expenses",
+   "fieldtype": "Check",
+   "label": "Expenses"
+  },
+  {
+   "default": "1",
+   "fieldname": "feature_people",
+   "fieldtype": "Check",
+   "label": "People"
+  },
+  {
+   "default": "1",
+   "fieldname": "feature_news",
+   "fieldtype": "Check",
+   "label": "Announcements and Policies"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-11-17 12:00:00.000000",
+ "modified": "2026-11-17 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "StaffDock",
  "name": "StaffDock Settings",

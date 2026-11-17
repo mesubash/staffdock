@@ -441,4 +441,17 @@ quiet = new_request("e2e email off")
 time.sleep(5)
 assert not queued_for("max@example.com", quiet), "no email when the setting is off"
 
+# --- Feature switches: off features vanish from the portal and refuse their endpoints
+admin.call("PUT", SETTINGS, {"feature_leave": 0, "feature_expenses": 0})
+try:
+	features = emma.api("me")["features"]
+	assert not features["leave"] and not features["expenses"] and features["attendance"], features
+	assert not emma.ok("POST", "/api/method/staffdock.api.apply_leave", {"leave_type": "Casual Leave", "from_date": "2026-12-01", "to_date": "2026-12-01", "reason": "x"})
+	assert not emma.ok("POST", "/api/method/staffdock.api.my_expenses", {})
+	tasks = max.api("my_tasks")
+	assert tasks["leaves_to_approve"] == [] and tasks["expenses_to_approve"] == [], "home still works with features off"
+finally:
+	admin.call("PUT", SETTINGS, {"feature_leave": 1, "feature_expenses": 1})
+assert emma.api("me")["features"]["leave"] and emma.api("leave_summary")["balances"], "switching back on restores it"
+
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

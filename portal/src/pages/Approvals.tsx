@@ -14,11 +14,15 @@ const FIELDS = ["name", "sd_employee_name", "sd_reason", "workflow_state", "stat
 export function Approvals() {
   const me = useMe();
   const queryClient = useQueryClient();
-  const leaves = useQuery({ queryKey: ["leaves-to-approve"], queryFn: () => call<LeaveRow[]>("staffdock.api.leaves_to_approve") });
+  const on = me.features;
+  const leaves = useQuery({
+    queryKey: ["leaves-to-approve"],
+    queryFn: () => (on.leave ? call<LeaveRow[]>("staffdock.api.leaves_to_approve") : Promise.resolve([])),
+  });
   const requests = useQuery({
     queryKey: ["approvals", "waiting"],
     queryFn: () =>
-      getList<RequestRow>("Material Request", {
+      !on.inventory ? Promise.resolve([] as RequestRow[]) : getList<RequestRow>("Material Request", {
         fields: FIELDS,
         filters: { sd_approver: me.user, workflow_state: "Pending Manager Approval" },
       }),
@@ -26,7 +30,7 @@ export function Approvals() {
   const history = useQuery({
     queryKey: ["approvals", "history"],
     queryFn: () =>
-      getList<RequestRow>("Material Request", {
+      !on.inventory ? Promise.resolve([] as RequestRow[]) : getList<RequestRow>("Material Request", {
         fields: FIELDS,
         filters: [
           ["sd_approver", "=", me.user],
@@ -45,7 +49,10 @@ export function Approvals() {
     },
   });
 
-  const expenses = useQuery({ queryKey: ["expenses-to-approve"], queryFn: () => call<Claim[]>("staffdock.api.expenses_to_approve") });
+  const expenses = useQuery({
+    queryKey: ["expenses-to-approve"],
+    queryFn: () => (on.expenses ? call<Claim[]>("staffdock.api.expenses_to_approve") : Promise.resolve([])),
+  });
   const decideExpense = useMutation({
     mutationFn: ({ name, approve }: { name: string; approve: boolean }) =>
       call("staffdock.api.decide_expense", { name, approve: approve ? 1 : 0 }),

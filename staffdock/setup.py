@@ -15,6 +15,7 @@ INVENTORY = "Inventory"
 
 
 def after_migrate():
+	staffdock_settings.switch_on_new_features()
 	setup_roles()
 	setup_custom_fields()
 	setup_permissions()

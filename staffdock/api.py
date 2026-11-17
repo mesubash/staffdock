@@ -47,12 +47,14 @@ def me():
 		"has_desk": frappe.db.get_value("User", user, "user_type") == "System User",
 		"default_warehouse": _default_warehouse(),
 		"date_format": frappe.db.get_default("date_format") or "yyyy-mm-dd",
+		"features": staffdock_settings.get().features,
 	}
 
 
 @frappe.whitelist()
 def issue_request(name):
 	"""Issue an approved request from stores (Material Issue stock entry)."""
+	_require("inventory")
 	frappe.only_for(INVENTORY)
 	entry = make_stock_entry(name)
 	for row in entry.items:
@@ -65,6 +67,7 @@ def issue_request(name):
 @frappe.whitelist()
 def receive_stock(item_code, qty, rate=0, warehouse=None):
 	"""Add stock to a store (Material Receipt), e.g. a delivery that arrived."""
+	_require("inventory")
 	frappe.only_for(INVENTORY)
 	if flt(qty) <= 0:
 		frappe.throw(_("Quantity must be more than zero."))
@@ -90,6 +93,7 @@ def receive_stock(item_code, qty, rate=0, warehouse=None):
 
 @frappe.whitelist()
 def stock_levels():
+	_require("inventory")
 	frappe.only_for(INVENTORY)
 	bins = frappe.get_all("Bin", fields=["item_code", "warehouse", "actual_qty", "reserved_qty"], order_by="item_code")
 	names = dict(frappe.get_all("Item", fields=["name", "item_name"], as_list=True))
@@ -101,6 +105,7 @@ def stock_levels():
 @frappe.whitelist()
 def employees():
 	"""Active employees to issue assets to."""
+	_require("inventory")
 	frappe.only_for(INVENTORY)
 	return frappe.get_all(
 		"Employee",
@@ -114,6 +119,7 @@ def employees():
 @frappe.whitelist()
 def issue_asset(asset, employee):
 	"""Hand an asset to an employee; it waits for their acknowledgement."""
+	_require("inventory")
 	frappe.only_for(INVENTORY)
 	doc = frappe.get_doc("Asset", asset)
 	if doc.custodian:
@@ -133,6 +139,7 @@ def issue_asset(asset, employee):
 @frappe.whitelist()
 def receive_asset(asset, condition, location=None):
 	"""Take an asset back from its custodian and record its condition."""
+	_require("inventory")
 	frappe.only_for(INVENTORY)
 	doc = frappe.get_doc("Asset", asset)
 	if not doc.custodian:
@@ -158,54 +165,54 @@ def receive_asset(asset, condition, location=None):
 
 @frappe.whitelist()
 def my_tasks():
-	"""Everything waiting on the current user, for the portal home page."""
+	"""Everything waiting on the current user, for the portal home page. Off features stay empty."""
 	user = frappe.session.user
 	employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-	fields = ["name", "sd_employee_name", "sd_reason", "workflow_state", "status", "modified"]
-	request = frappe.qb.DocType("Asset Movement")
-	item = frappe.qb.DocType("Asset Movement Item")
+	on = staffdock_settings.get().features
 	tasks = {
-		"to_approve": frappe.get_all(
-			"Material Request",
-			filters={"sd_approver": user, "workflow_state": "Pending Manager Approval"},
-			fields=fields,
-		),
-		"requests_to_acknowledge": frappe.get_all(
-			"Material Request",
-			filters={"owner": user, "workflow_state": "Approved", "status": "Issued"},
-			fields=fields,
-		),
-		"assets_to_acknowledge": (
-			frappe.qb.from_(request)
-			.join(item)
-			.on(item.parent == request.name)
-			.select(request.name, item.asset, item.asset_name, request.modified)
-			.where((request.workflow_state == "Pending Acknowledgement") & (item.to_employee == employee))
-			.run(as_dict=True)
-			if employee
-			else []
-		),
-		"open_requests": frappe.db.count(
-			"Material Request", {"owner": user, "workflow_state": ["not in", ["Completed", "Inventory Rejected"]]}
-		),
-		"my_assets": frappe.db.count("Asset", {"custodian": employee}) if employee else 0,
-		"leaves_to_approve": leaves_to_approve(),
-		"expenses_to_approve": frappe.get_all(
+		"to_approve": [],
+		"requests_to_acknowledge": [],
+		"assets_to_acknowledge": [],
+		"leaves_to_approve": [],
+		"expenses_to_approve": [],
+		"policies_to_acknowledge": [],
+	}
+	if on["inventory"]:
+		fields = ["name", "sd_employee_name", "sd_reason", "workflow_state", "status", "modified"]
+		movement = frappe.qb.DocType("Asset Movement")
+		item = frappe.qb.DocType("Asset Movement Item")
+		tasks["to_approve"] = frappe.get_all(
+			"Material Request", filters={"sd_approver": user, "workflow_state": "Pending Manager Approval"}, fields=fields
+		)
+		tasks["requests_to_acknowledge"] = frappe.get_all(
+			"Material Request", filters={"owner": user, "workflow_state": "Approved", "status": "Issued"}, fields=fields
+		)
+		if employee:
+			tasks["assets_to_acknowledge"] = (
+				frappe.qb.from_(movement)
+				.join(item)
+				.on(item.parent == movement.name)
+				.select(movement.name, item.asset, item.asset_name, movement.modified)
+				.where((movement.workflow_state == "Pending Acknowledgement") & (item.to_employee == employee))
+				.run(as_dict=True)
+			)
+		if INVENTORY in frappe.get_roles():
+			tasks["to_review"] = frappe.get_all(
+				"Material Request", filters={"workflow_state": "Pending Inventory Review"}, fields=fields
+			)
+			tasks["to_issue"] = frappe.get_all(
+				"Material Request", filters={"workflow_state": "Approved", "status": ["!=", "Issued"]}, fields=fields
+			)
+	if on["leave"]:
+		tasks["leaves_to_approve"] = leaves_to_approve()
+	if on["expenses"]:
+		tasks["expenses_to_approve"] = frappe.get_all(
 			"Expense Claim",
 			filters={"expense_approver": user, "approval_status": "Draft", "docstatus": 0},
 			fields=["name", "employee_name", "total_claimed_amount", "currency"],
-		),
-		"policies_to_acknowledge": _policies_to_acknowledge(employee),
-	}
-	if INVENTORY in frappe.get_roles():
-		tasks["to_review"] = frappe.get_all(
-			"Material Request", filters={"workflow_state": "Pending Inventory Review"}, fields=fields
 		)
-		tasks["to_issue"] = frappe.get_all(
-			"Material Request",
-			filters={"workflow_state": "Approved", "status": ["!=", "Issued"]},
-			fields=fields,
-		)
+	if on["news"]:
+		tasks["policies_to_acknowledge"] = _policies_to_acknowledge(employee)
 	return tasks
 
 
@@ -250,6 +257,7 @@ def history(doctype, name):
 @frappe.whitelist()
 def discard_request(name):
 	"""Delete your own request that was never sent."""
+	_require("inventory")
 	doc = frappe.get_doc("Material Request", name)
 	if doc.owner != frappe.session.user or doc.docstatus != 0 or doc.workflow_state not in (None, "", "Draft"):
 		frappe.throw(_("Only your own unsent requests can be discarded."), frappe.PermissionError)
@@ -286,6 +294,12 @@ LEAVE_FIELDS = [
 ]
 
 
+def _require(feature):
+	"""Endpoints of a feature switched off in StaffDock Settings refuse to run."""
+	if not staffdock_settings.get().features[feature]:
+		frappe.throw(_("This feature is turned off."), frappe.PermissionError)
+
+
 def _department_name(department):
 	"""ERPNext suffixes departments with the company abbreviation ("IT - AC"); show the plain name."""
 	return department and (frappe.db.get_value("Department", department, "department_name") or department)
@@ -301,6 +315,7 @@ def _my_employee():
 @frappe.whitelist()
 def leave_summary():
 	"""Balances per leave type and my applications, newest first."""
+	_require("leave")
 	from hrms.hr.doctype.leave_application.leave_application import get_leave_details
 
 	employee = _my_employee()
@@ -328,6 +343,7 @@ def leave_summary():
 
 @frappe.whitelist()
 def apply_leave(leave_type, from_date, to_date, reason, half_day=0):
+	_require("leave")
 	employee = _my_employee()
 	doc = frappe.get_doc(
 		{
@@ -355,6 +371,7 @@ def apply_leave(leave_type, from_date, to_date, reason, half_day=0):
 @frappe.whitelist()
 def withdraw_leave(name):
 	"""Take back your own leave application before it is decided."""
+	_require("leave")
 	doc = frappe.get_doc("Leave Application", name)
 	if doc.employee != _my_employee() or doc.docstatus != 0 or doc.status != "Open":
 		frappe.throw(_("Only your own undecided leave can be withdrawn."), frappe.PermissionError)
@@ -363,6 +380,7 @@ def withdraw_leave(name):
 
 @frappe.whitelist()
 def leaves_to_approve():
+	_require("leave")
 	return frappe.get_all(
 		"Leave Application",
 		filters={"leave_approver": frappe.session.user, "status": "Open", "docstatus": 0},
@@ -374,6 +392,7 @@ def leaves_to_approve():
 @frappe.whitelist()
 def decide_leave(name, approve):
 	"""Approve or reject as the leave approver. HRMS records both by submitting."""
+	_require("leave")
 	doc = frappe.get_doc("Leave Application", name)
 	if doc.leave_approver != frappe.session.user:
 		frappe.throw(_("Only the leave approver can decide this application."), frappe.PermissionError)
@@ -417,6 +436,7 @@ def _worked_seconds(logs, until=None):
 
 @frappe.whitelist()
 def attendance_today():
+	_require("attendance")
 	employee = _my_employee()
 	now = frappe.utils.now_datetime()
 	day = now.date()
@@ -434,6 +454,7 @@ def attendance_today():
 @frappe.whitelist()
 def check_in_out(latitude=None, longitude=None):
 	"""Toggle: check in if out, check out if in. Employees can't create check-ins any other way."""
+	_require("attendance")
 	employee = _my_employee()
 	now = frappe.utils.now_datetime()
 	day = now.date()
@@ -456,6 +477,7 @@ def check_in_out(latitude=None, longitude=None):
 
 @frappe.whitelist()
 def attendance_history(days=30):
+	_require("attendance")
 	employee = _my_employee()
 	end = frappe.utils.now_datetime()
 	start = frappe.utils.add_days(end.date(), -min(int(days), 90) + 1)
@@ -546,6 +568,7 @@ def set_profile_photo(file_url):
 
 @frappe.whitelist()
 def people():
+	_require("people")
 	from hrms.utils.holiday_list import get_holiday_list_for_employee
 
 	today = frappe.utils.today()
@@ -603,6 +626,7 @@ def _clean_html(html):
 
 @frappe.whitelist()
 def announcements(limit=5):
+	_require("news")
 	rows = frappe.get_all(
 		"Staff Announcement",
 		filters={"published": 1},
@@ -642,6 +666,7 @@ def _policies_to_acknowledge(employee):
 
 @frappe.whitelist()
 def policies():
+	_require("news")
 	employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
 	done = _acknowledged(employee)
 	rows = frappe.get_all(
@@ -658,6 +683,7 @@ def policies():
 
 @frappe.whitelist()
 def acknowledge_policy(name):
+	_require("news")
 	employee = _my_employee()
 	policy = frappe.db.get_value("Staff Policy", {"name": name, "published": 1}, ["name", "version"], as_dict=True)
 	if not policy:
@@ -710,6 +736,7 @@ def _with_lines(claims):
 
 @frappe.whitelist()
 def my_expenses():
+	_require("expenses")
 	return {
 		"types": frappe.get_all("Expense Claim Type", pluck="name", order_by="name asc"),
 		"claims": _with_lines(
@@ -727,6 +754,7 @@ def my_expenses():
 @frappe.whitelist()
 def submit_expense(lines, remark="", receipt_url=None):
 	"""Create a claim for the current employee; it waits for their expense approver."""
+	_require("expenses")
 	from hrms.hr.doctype.expense_claim.expense_claim import get_default_payable_account
 
 	employee = frappe.get_doc("Employee", _my_employee())
@@ -775,6 +803,7 @@ def _attach_own_file(file_url, doctype, name):
 
 @frappe.whitelist()
 def withdraw_expense(name):
+	_require("expenses")
 	claim = frappe.get_doc("Expense Claim", name)
 	if claim.employee != _my_employee() or claim.docstatus != 0 or claim.approval_status != "Draft":
 		frappe.throw(_("Only your own undecided claims can be withdrawn."), frappe.PermissionError)
@@ -783,6 +812,7 @@ def withdraw_expense(name):
 
 @frappe.whitelist()
 def expenses_to_approve():
+	_require("expenses")
 	return _with_lines(
 		frappe.get_all(
 			"Expense Claim",
@@ -795,6 +825,7 @@ def expenses_to_approve():
 
 @frappe.whitelist()
 def decide_expense(name, approve):
+	_require("expenses")
 	claim = frappe.get_doc("Expense Claim", name)
 	if claim.expense_approver != frappe.session.user:
 		frappe.throw(_("Only the expense approver can decide this claim."), frappe.PermissionError)

@@ -87,20 +87,24 @@ export function Home() {
       title={`${greeting()}, ${me.full_name.split(" ")[0]}`}
       actions={
         <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/leave">
-              <CalendarPlus /> Apply for leave
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link to="/requests/new">
-              <Plus /> Request items
-            </Link>
-          </Button>
+          {me.features.leave ? (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/leave">
+                <CalendarPlus /> Apply for leave
+              </Link>
+            </Button>
+          ) : null}
+          {me.features.inventory ? (
+            <Button asChild size="sm">
+              <Link to="/requests/new">
+                <Plus /> Request items
+              </Link>
+            </Button>
+          ) : null}
         </div>
       }
     >
-      {me.employee ? <CheckInCard /> : null}
+      {me.employee && me.features.attendance ? <CheckInCard /> : null}
 
       <Card title={items.length ? `Needs your attention (${items.length})` : "Needs your attention"}>
         <ErrorText error={tasks.error} />
@@ -122,7 +126,7 @@ export function Home() {
         </ul>
       </Card>
 
-      <Announcements />
+      {me.features.news ? <Announcements /> : null}
       <Updates />
     </Page>
   );

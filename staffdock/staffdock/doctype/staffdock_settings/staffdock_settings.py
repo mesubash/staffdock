@@ -22,7 +22,9 @@ class StaffDockSettings(Document):
 		frappe.clear_document_cache(self.doctype, self.doctype)
 		sync_branding()
 		# During install/migrate, setup.after_migrate builds notifications once roles exist
-		if self.has_value_changed("send_email_notifications") and not (frappe.flags.in_install or frappe.flags.in_migrate):
+		if self.has_value_changed("send_email_notifications") and not (
+			frappe.flags.in_install or frappe.flags.in_migrate
+		):
 			from staffdock.setup import setup_notifications
 
 			setup_notifications()
@@ -52,6 +54,8 @@ def switch_on_new_features():
 	"""A switch added in an update has no stored value yet, which Frappe reads as off; start it on."""
 	for feature in FEATURES:
 		field = f"feature_{feature}"
-		if not frappe.db.sql("select 1 from `tabSingles` where doctype=%s and field=%s", ("StaffDock Settings", field)):
+		if not frappe.db.sql(
+			"select 1 from `tabSingles` where doctype=%s and field=%s", ("StaffDock Settings", field)
+		):
 			frappe.db.set_single_value("StaffDock Settings", field, 1)
 	frappe.clear_document_cache("StaffDock Settings", "StaffDock Settings")

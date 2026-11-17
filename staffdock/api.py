@@ -21,9 +21,9 @@ def _default_warehouse():
 	if configured := staffdock_settings.get().default_warehouse:
 		return configured
 	company = _company()
-	return frappe.db.get_value("Warehouse", {"warehouse_name": "Stores", "company": company}) or frappe.db.get_value(
-		"Warehouse", {"is_group": 0, "company": company}
-	)
+	return frappe.db.get_value(
+		"Warehouse", {"warehouse_name": "Stores", "company": company}
+	) or frappe.db.get_value("Warehouse", {"is_group": 0, "company": company})
 
 
 @frappe.whitelist()
@@ -38,7 +38,9 @@ def me():
 		"full_name": frappe.utils.get_fullname(user),
 		"image": (employee and employee.image) or frappe.db.get_value("User", user, "user_image"),
 		"employee": employee,
-		"is_manager": bool(employee and frappe.db.exists("Employee", {"reports_to": employee.name, "status": "Active"})),
+		"is_manager": bool(
+			employee and frappe.db.exists("Employee", {"reports_to": employee.name, "status": "Active"})
+		),
 		"is_approver": bool(
 			frappe.db.exists("Employee", {"leave_approver": user, "status": "Active"})
 			or frappe.db.exists("Employee", {"expense_approver": user, "status": "Active"})
@@ -95,7 +97,9 @@ def receive_stock(item_code, qty, rate=0, warehouse=None):
 def stock_levels():
 	_require("inventory")
 	frappe.only_for(INVENTORY)
-	bins = frappe.get_all("Bin", fields=["item_code", "warehouse", "actual_qty", "reserved_qty"], order_by="item_code")
+	bins = frappe.get_all(
+		"Bin", fields=["item_code", "warehouse", "actual_qty", "reserved_qty"], order_by="item_code"
+	)
 	names = dict(frappe.get_all("Item", fields=["name", "item_name"], as_list=True))
 	for b in bins:
 		b["item_name"] = names.get(b["item_code"], b["item_code"])
@@ -123,7 +127,9 @@ def issue_asset(asset, employee):
 	frappe.only_for(INVENTORY)
 	doc = frappe.get_doc("Asset", asset)
 	if doc.custodian:
-		frappe.throw(_("{0} is already with {1}. Receive it back first.").format(doc.asset_name, doc.custodian))
+		frappe.throw(
+			_("{0} is already with {1}. Receive it back first.").format(doc.asset_name, doc.custodian)
+		)
 	movement = frappe.get_doc(
 		{
 			"doctype": "Asset Movement",
@@ -154,7 +160,9 @@ def receive_asset(asset, condition, location=None):
 				{
 					"asset": asset,
 					"from_employee": doc.custodian,
-					"target_location": location or doc.location or frappe.db.get_value("Location", {}, "name"),
+					"target_location": location
+					or doc.location
+					or frappe.db.get_value("Location", {}, "name"),
 				}
 			],
 		}
@@ -182,10 +190,14 @@ def my_tasks():
 		movement = frappe.qb.DocType("Asset Movement")
 		item = frappe.qb.DocType("Asset Movement Item")
 		tasks["to_approve"] = frappe.get_all(
-			"Material Request", filters={"sd_approver": user, "workflow_state": "Pending Manager Approval"}, fields=fields
+			"Material Request",
+			filters={"sd_approver": user, "workflow_state": "Pending Manager Approval"},
+			fields=fields,
 		)
 		tasks["requests_to_acknowledge"] = frappe.get_all(
-			"Material Request", filters={"owner": user, "workflow_state": "Approved", "status": "Issued"}, fields=fields
+			"Material Request",
+			filters={"owner": user, "workflow_state": "Approved", "status": "Issued"},
+			fields=fields,
 		)
 		if employee:
 			tasks["assets_to_acknowledge"] = (
@@ -193,7 +205,9 @@ def my_tasks():
 				.join(item)
 				.on(item.parent == movement.name)
 				.select(movement.name, item.asset, item.asset_name, movement.modified)
-				.where((movement.workflow_state == "Pending Acknowledgement") & (item.to_employee == employee))
+				.where(
+					(movement.workflow_state == "Pending Acknowledgement") & (item.to_employee == employee)
+				)
 				.run(as_dict=True)
 			)
 		if INVENTORY in frappe.get_roles():
@@ -201,7 +215,9 @@ def my_tasks():
 				"Material Request", filters={"workflow_state": "Pending Inventory Review"}, fields=fields
 			)
 			tasks["to_issue"] = frappe.get_all(
-				"Material Request", filters={"workflow_state": "Approved", "status": ["!=", "Issued"]}, fields=fields
+				"Material Request",
+				filters={"workflow_state": "Approved", "status": ["!=", "Issued"]},
+				fields=fields,
 			)
 	if on["leave"]:
 		tasks["leaves_to_approve"] = leaves_to_approve()
@@ -247,7 +263,13 @@ def history(doctype, name):
 			.groupby(entry.name)
 			.run(as_dict=True)
 		):
-			events.append({"at": e.modified, "by": e.owner, "text": _("Issued {0} item(s) from store").format(f"{flt(e.qty):g}")})
+			events.append(
+				{
+					"at": e.modified,
+					"by": e.owner,
+					"text": _("Issued {0} item(s) from store").format(f"{flt(e.qty):g}"),
+				}
+			)
 
 	for e in events:
 		e["by"] = frappe.utils.get_fullname(e["by"])
@@ -259,7 +281,11 @@ def discard_request(name):
 	"""Delete your own request that was never sent."""
 	_require("inventory")
 	doc = frappe.get_doc("Material Request", name)
-	if doc.owner != frappe.session.user or doc.docstatus != 0 or doc.workflow_state not in (None, "", "Draft"):
+	if (
+		doc.owner != frappe.session.user
+		or doc.docstatus != 0
+		or doc.workflow_state not in (None, "", "Draft")
+	):
 		frappe.throw(_("Only your own unsent requests can be discarded."), frappe.PermissionError)
 	frappe.delete_doc("Material Request", name, ignore_permissions=True)
 
@@ -528,7 +554,9 @@ def my_profile():
 	employee = frappe.get_doc("Employee", _my_employee())
 	profile = {f: employee.get(f) for f in PROFILE_FIELDS}
 	profile["department"] = _department_name(employee.department)
-	profile["manager"] = employee.reports_to and frappe.db.get_value("Employee", employee.reports_to, "employee_name")
+	profile["manager"] = employee.reports_to and frappe.db.get_value(
+		"Employee", employee.reports_to, "employee_name"
+	)
 	return profile
 
 
@@ -549,7 +577,10 @@ def update_profile(**changes):
 def set_profile_photo(file_url):
 	"""Use an image the current user just uploaded as their photo."""
 	file = frappe.db.get_value(
-		"File", {"file_url": file_url, "owner": frappe.session.user}, ["name", "is_private", "file_name"], as_dict=True
+		"File",
+		{"file_url": file_url, "owner": frappe.session.user},
+		["name", "is_private", "file_name"],
+		as_dict=True,
 	)
 	if not file or not frappe.utils.is_image(file.file_name or file_url):
 		frappe.throw(_("Upload an image first."))
@@ -594,7 +625,11 @@ def people():
 	)
 	by_id = {e.name: e for e in employees}
 	out_today = [
-		{"employee_name": by_id[o.employee].employee_name, "image": by_id[o.employee].image, "back_after": o.to_date}
+		{
+			"employee_name": by_id[o.employee].employee_name,
+			"image": by_id[o.employee].image,
+			"back_after": o.to_date,
+		}
 		for o in out
 		if o.employee in by_id
 	]
@@ -646,7 +681,10 @@ def _acknowledged(employee):
 	return {
 		tuple(row)
 		for row in frappe.get_all(
-			"Staff Policy Acknowledgement", filters={"employee": employee}, fields=["policy", "version"], as_list=True
+			"Staff Policy Acknowledgement",
+			filters={"employee": employee},
+			fields=["policy", "version"],
+			as_list=True,
 		)
 	}
 
@@ -685,7 +723,9 @@ def policies():
 def acknowledge_policy(name):
 	_require("news")
 	employee = _my_employee()
-	policy = frappe.db.get_value("Staff Policy", {"name": name, "published": 1}, ["name", "version"], as_dict=True)
+	policy = frappe.db.get_value(
+		"Staff Policy", {"name": name, "published": 1}, ["name", "version"], as_dict=True
+	)
 	if not policy:
 		frappe.throw(_("Policy not found."))
 	if (policy.name, policy.version) not in _acknowledged(employee):
@@ -795,7 +835,9 @@ def submit_expense(lines, remark="", receipt_url=None):
 
 
 def _attach_own_file(file_url, doctype, name):
-	file = frappe.db.get_value("File", {"file_url": file_url, "owner": frappe.session.user, "attached_to_name": ["is", "not set"]})
+	file = frappe.db.get_value(
+		"File", {"file_url": file_url, "owner": frappe.session.user, "attached_to_name": ["is", "not set"]}
+	)
 	if not file:
 		frappe.throw(_("Upload the receipt again."))
 	frappe.db.set_value("File", file, {"attached_to_doctype": doctype, "attached_to_name": name})

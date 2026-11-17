@@ -35,9 +35,15 @@ def lift_own_record_restriction_for_hr():
 	"""HR/admin staff manage other employees; see events.employee_validate."""
 	from staffdock.events import HR_ROLES
 
-	hr_users = set(frappe.get_all("Has Role", filters={"role": ["in", list(HR_ROLES)], "parenttype": "User"}, pluck="parent"))
+	hr_users = set(
+		frappe.get_all(
+			"Has Role", filters={"role": ["in", list(HR_ROLES)], "parenttype": "User"}, pluck="parent"
+		)
+	)
 	for employee in frappe.get_all(
-		"Employee", filters={"create_user_permission": 1, "user_id": ["in", list(hr_users) or [""]]}, pluck="name"
+		"Employee",
+		filters={"create_user_permission": 1, "user_id": ["in", list(hr_users) or [""]]},
+		pluck="name",
 	):
 		frappe.get_doc("Employee", employee).save(ignore_permissions=True)
 
@@ -53,7 +59,9 @@ def setup_roles():
 		if frappe.db.get_value("Role", role, "desk_access"):
 			frappe.db.set_value("Role", role, "desk_access", 0)
 			# user_type is worked out from roles on save; recompute for current holders
-			for user in frappe.get_all("Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"):
+			for user in frappe.get_all(
+				"Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"
+			):
 				frappe.get_doc("User", user).save(ignore_permissions=True)
 
 
@@ -166,7 +174,9 @@ def _workflow(name, document_type, states, transitions):
 	for action in {t[1] for t in transitions}:
 		_ensure("Workflow Action Master", action, workflow_action_name=action)
 
-	wf = frappe.get_doc("Workflow", name) if frappe.db.exists("Workflow", name) else frappe.new_doc("Workflow")
+	wf = (
+		frappe.get_doc("Workflow", name) if frappe.db.exists("Workflow", name) else frappe.new_doc("Workflow")
+	)
 	wf.update(
 		{
 			"workflow_name": name,
@@ -219,7 +229,14 @@ def setup_inventory_request_workflow():
 		("Pending Manager Approval", "Reject", "Manager Rejected", "Employee", approver, 0),
 		("Pending Inventory Review", "Approve", "Approved", INVENTORY, None, 0),
 		("Pending Inventory Review", "Reject", "Inventory Rejected", INVENTORY, None, 0),
-		("Approved", "Acknowledge Receipt", "Completed", "Employee", f"{OWNER} and doc.status == 'Issued'", 1),
+		(
+			"Approved",
+			"Acknowledge Receipt",
+			"Completed",
+			"Employee",
+			f"{OWNER} and doc.status == 'Issued'",
+			1,
+		),
 		# Approved but can't (or won't) be fulfilled, e.g. out of stock: inventory closes it
 		("Approved", "Close", "Closed", INVENTORY, "doc.status != 'Issued'", 0),
 	]
@@ -233,9 +250,7 @@ def setup_asset_movement_workflow():
 		("Acknowledged", 1, INVENTORY, "Success"),
 		("Completed", 1, INVENTORY, "Success"),
 	]
-	receiver = (
-		"frappe.db.get_value('Employee', doc.assets[0].to_employee, 'user_id') == frappe.session.user"
-	)
+	receiver = "frappe.db.get_value('Employee', doc.assets[0].to_employee, 'user_id') == frappe.session.user"
 	transitions = [
 		("Draft", "Issue", "Pending Acknowledgement", INVENTORY, "doc.purpose == 'Issue'", 1),
 		("Draft", "Submit", "Completed", INVENTORY, "doc.purpose != 'Issue'", 1),
@@ -305,7 +320,11 @@ def setup_notifications():
 			(name, "System Notification", 1, subject),
 			(f"{name} (Email)", "Email", int(email), f"<p>{subject}</p>{portal_link}"),
 		):
-			n = frappe.get_doc("Notification", title) if frappe.db.exists("Notification", title) else frappe.new_doc("Notification")
+			n = (
+				frappe.get_doc("Notification", title)
+				if frappe.db.exists("Notification", title)
+				else frappe.new_doc("Notification")
+			)
 			n.update(
 				{
 					"name": title,

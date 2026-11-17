@@ -17,9 +17,36 @@ DEPARTMENTS = ["IT", "Administration"]
 PEOPLE = [
 	("max@example.com", "Max", "Manager", "Male", "IT", "Manager", [], None),
 	("emma@example.com", "Emma", "Employee", "Female", "IT", "Software Developer", [], "max@example.com"),
-	("ian@example.com", "Ian", "Inventory", "Male", "Administration", "Administrative Officer", ["Inventory"], None),
-	("olivia@example.com", "Olivia", "Other", "Female", "Marketing", "Marketing Specialist", [], "ian@example.com"),
-	("hana@example.com", "Hana", "HR", "Female", "Human Resources", "HR Manager", ["HR Manager", "HR User"], None),
+	(
+		"ian@example.com",
+		"Ian",
+		"Inventory",
+		"Male",
+		"Administration",
+		"Administrative Officer",
+		["Inventory"],
+		None,
+	),
+	(
+		"olivia@example.com",
+		"Olivia",
+		"Other",
+		"Female",
+		"Marketing",
+		"Marketing Specialist",
+		[],
+		"ian@example.com",
+	),
+	(
+		"hana@example.com",
+		"Hana",
+		"HR",
+		"Female",
+		"Human Resources",
+		"HR Manager",
+		["HR Manager", "HR User"],
+		None,
+	),
 ]
 
 
@@ -55,7 +82,12 @@ def run(password):
 	for name in DEPARTMENTS:
 		if not frappe.db.exists("Department", f"{name} - {abbr}"):
 			frappe.get_doc(
-				{"doctype": "Department", "department_name": name, "company": COMPANY, "parent_department": "All Departments"}
+				{
+					"doctype": "Department",
+					"department_name": name,
+					"company": COMPANY,
+					"parent_department": "All Departments",
+				}
 			).insert()
 
 	employee_by_email = {}
@@ -175,7 +207,9 @@ def seed_leave(employees):
 
 	for employee in employees:
 		for leave_type, days in LEAVE_ALLOCATIONS:
-			if frappe.db.exists("Leave Allocation", {"employee": employee, "leave_type": leave_type, "docstatus": 1}):
+			if frappe.db.exists(
+				"Leave Allocation", {"employee": employee, "leave_type": leave_type, "docstatus": 1}
+			):
 				continue
 			allocation = frappe.get_doc(
 				{
@@ -215,7 +249,10 @@ def seed_expenses(abbr):
 
 
 def seed_dev_mail():
-	"""Outgoing mail to the Mailpit container from compose.dev.yml (view at http://localhost:8025)."""
+	"""Outgoing mail to Mailpit (compose.dev.yml; view at http://localhost:8025).
+
+	The host comes from the site config key dev_mail_host (default: the compose service name).
+	"""
 	if frappe.db.exists("Email Account", "StaffDock Dev Mail"):
 		return
 	frappe.get_doc(
@@ -225,7 +262,7 @@ def seed_dev_mail():
 			"email_id": f"staffdock@{DOMAIN}",
 			"enable_outgoing": 1,
 			"default_outgoing": 1,
-			"smtp_server": "mailpit",
+			"smtp_server": frappe.conf.get("dev_mail_host") or "mailpit",
 			"smtp_port": 1025,
 			"use_tls": 0,
 			"no_smtp_authentication": 1,
@@ -258,7 +295,13 @@ def seed_inventory(abbr):
 	for group in ITEM_GROUPS:
 		_ensure("Item Group", group, item_group_name=group, parent_item_group="All Item Groups")
 
-	_ensure("Warehouse", f"IT Store - {abbr}", warehouse_name="IT Store", company=COMPANY, parent_warehouse=f"All Warehouses - {abbr}")
+	_ensure(
+		"Warehouse",
+		f"IT Store - {abbr}",
+		warehouse_name="IT Store",
+		company=COMPANY,
+		parent_warehouse=f"All Warehouses - {abbr}",
+	)
 	_ensure("Location", "Main Office", location_name="Main Office")
 	_ensure(
 		"Asset Category",
@@ -277,11 +320,20 @@ def seed_inventory(abbr):
 	new_stock = []
 	for code, name, group, uom, qty, rate in STOCK_ITEMS:
 		if not frappe.db.exists("Item", code):
-			_ensure("Item", code, item_code=code, item_name=name, item_group=group, stock_uom=uom, is_stock_item=1)
-			new_stock.append({"item_code": code, "qty": qty, "basic_rate": rate, "t_warehouse": f"Stores - {abbr}"})
+			_ensure(
+				"Item", code, item_code=code, item_name=name, item_group=group, stock_uom=uom, is_stock_item=1
+			)
+			new_stock.append(
+				{"item_code": code, "qty": qty, "basic_rate": rate, "t_warehouse": f"Stores - {abbr}"}
+			)
 	if new_stock:
 		entry = frappe.get_doc(
-			{"doctype": "Stock Entry", "stock_entry_type": "Material Receipt", "company": COMPANY, "items": new_stock}
+			{
+				"doctype": "Stock Entry",
+				"stock_entry_type": "Material Receipt",
+				"company": COMPANY,
+				"items": new_stock,
+			}
 		)
 		entry.insert()
 		entry.submit()

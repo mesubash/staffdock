@@ -44,7 +44,9 @@ def asset_movement_on_submit(doc, method=None):
 		user = row.to_employee and frappe.db.get_value("Employee", row.to_employee, "user_id")
 		if not user:
 			continue
-		subject = _("{0} was assigned to you. Please confirm you received it").format(row.asset_name or row.asset)
+		subject = _("{0} was assigned to you. Please confirm you received it").format(
+			row.asset_name or row.asset
+		)
 		frappe.get_doc(
 			{
 				"doctype": "Notification Log",
@@ -82,5 +84,7 @@ def user_on_update(doc, method=None):
 	"""Someone given an HR role later: lift the own-record restriction on their employee."""
 	if not HR_ROLES & {r.role for r in doc.roles}:
 		return
-	for employee in frappe.get_all("Employee", filters={"user_id": doc.name, "create_user_permission": 1}, pluck="name"):
+	for employee in frappe.get_all(
+		"Employee", filters={"user_id": doc.name, "create_user_permission": 1}, pluck="name"
+	):
 		frappe.get_doc("Employee", employee).save(ignore_permissions=True)

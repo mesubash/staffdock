@@ -9,7 +9,14 @@ Everyone else (role "Employee") sees only:
 
 import frappe
 
-STAFF_ROLES = {"System Manager", "Inventory", "Stock Manager", "Stock User", "Accounts User", "Accounts Manager"}
+STAFF_ROLES = {
+	"System Manager",
+	"Inventory",
+	"Stock Manager",
+	"Stock User",
+	"Accounts User",
+	"Accounts Manager",
+}
 
 
 def _is_staff(user):

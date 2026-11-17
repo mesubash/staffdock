@@ -16,6 +16,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { to: "/requests", label: "Requests", show: true },
     { to: "/assets", label: "Assets", show: true },
     { to: "/people", label: "People", show: true },
+    { to: "/policies", label: "Policies", show: true },
     { to: "/approvals", label: "Approvals", show: me.is_manager || me.is_leave_approver },
     { to: "/inventory", label: "Inventory", show: me.is_inventory },
   ].filter((n) => n.show);
@@ -28,7 +29,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <img src={BRAND.logo} alt="" className="size-7" />
             <span className="hidden sm:inline">{BRAND.title}</span>
           </Link>
-          <nav className="hidden flex-1 gap-1 md:flex">
+          <nav className="hidden flex-1 gap-1 lg:flex">
             {nav.map((n) => (
               <Link
                 key={n.to}
@@ -41,11 +42,11 @@ export function Shell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="flex-1 md:hidden" />
+          <div className="flex-1 lg:hidden" />
           <button
             type="button"
             aria-expanded={menuOpen}
-            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent md:hidden"
+            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent lg:hidden"
             onClick={() => setMenuOpen(!menuOpen)}
           >
             {menuOpen ? <X className="size-4" /> : <Menu className="size-4" />} Menu
@@ -77,7 +78,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       {menuOpen ? (
-        <nav className="border-b border-border bg-card px-4 py-2 md:hidden">
+        <nav className="border-b border-border bg-card px-4 py-2 lg:hidden">
           {nav.map((n) => (
             <Link
               key={n.to}

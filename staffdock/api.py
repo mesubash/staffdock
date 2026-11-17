@@ -43,6 +43,7 @@ def me():
 		"is_inventory": INVENTORY in roles,
 		"has_desk": frappe.db.get_value("User", user, "user_type") == "System User",
 		"default_warehouse": _default_warehouse(),
+		"date_format": frappe.db.get_default("date_format") or "yyyy-mm-dd",
 	}
 
 
@@ -186,6 +187,7 @@ def my_tasks():
 		),
 		"my_assets": frappe.db.count("Asset", {"custodian": employee}) if employee else 0,
 		"leaves_to_approve": leaves_to_approve(),
+		"policies_to_acknowledge": _policies_to_acknowledge(employee),
 	}
 	if INVENTORY in frappe.get_roles():
 		tasks["to_review"] = frappe.get_all(
@@ -580,3 +582,86 @@ def people():
 			h.description = frappe.utils.strip_html(h.description or "")
 
 	return {"employees": employees, "out_today": out_today, "holidays": holidays}
+
+
+# --- Announcements and policies (HR writes them in desk; staff read and acknowledge here)
+
+
+def _clean_html(html):
+	from frappe.utils.html_utils import sanitize_html
+
+	return sanitize_html(html or "")
+
+
+@frappe.whitelist()
+def announcements(limit=5):
+	rows = frappe.get_all(
+		"Staff Announcement",
+		filters={"published": 1},
+		fields=["name", "title", "message", "creation"],
+		order_by="creation desc",
+		limit=min(int(limit), 20),
+	)
+	for r in rows:
+		r.message = _clean_html(r.message)
+	return rows
+
+
+def _acknowledged(employee):
+	"""{(policy, version)} pairs the employee has acknowledged; a new version needs a new acknowledgement."""
+	if not employee:
+		return set()
+	return {
+		tuple(row)
+		for row in frappe.get_all(
+			"Staff Policy Acknowledgement", filters={"employee": employee}, fields=["policy", "version"], as_list=True
+		)
+	}
+
+
+def _policies_to_acknowledge(employee):
+	done = _acknowledged(employee)
+	return [
+		p
+		for p in frappe.get_all(
+			"Staff Policy",
+			filters={"published": 1, "requires_acknowledgement": 1},
+			fields=["name", "title", "version"],
+		)
+		if (p.name, p.version) not in done
+	]
+
+
+@frappe.whitelist()
+def policies():
+	employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+	done = _acknowledged(employee)
+	rows = frappe.get_all(
+		"Staff Policy",
+		filters={"published": 1},
+		fields=["name", "title", "version", "effective_from", "requires_acknowledgement", "content"],
+		order_by="title asc",
+	)
+	for r in rows:
+		r.content = _clean_html(r.content)
+		r.acknowledged = (r.name, r.version) in done
+	return rows
+
+
+@frappe.whitelist()
+def acknowledge_policy(name):
+	employee = _my_employee()
+	policy = frappe.db.get_value("Staff Policy", {"name": name, "published": 1}, ["name", "version"], as_dict=True)
+	if not policy:
+		frappe.throw(_("Policy not found."))
+	if (policy.name, policy.version) not in _acknowledged(employee):
+		frappe.get_doc(
+			{
+				"doctype": "Staff Policy Acknowledgement",
+				"policy": policy.name,
+				"version": policy.version,
+				"employee": employee,
+				"acknowledged_on": frappe.utils.now_datetime(),
+			}
+		).insert(ignore_permissions=True)
+	return True

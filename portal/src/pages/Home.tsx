@@ -44,6 +44,12 @@ export function Home() {
           detail: r.sd_reason || r.name,
           state: [r.workflow_state, r.status] as [string, string],
         })),
+        ...t.policies_to_acknowledge.map((p) => ({
+          key: `policy-${p.name}`,
+          to: "/policies",
+          title: `Read and acknowledge: ${p.title}`,
+          detail: `Version ${p.version}`,
+        })),
         ...t.leaves_to_approve.map((l) => ({
           key: `leave-${l.name}`,
           to: "/approvals",
@@ -109,6 +115,7 @@ export function Home() {
         </ul>
       </Card>
 
+      <Announcements />
       <Updates />
     </Page>
   );
@@ -145,6 +152,28 @@ function Updates() {
             </li>
           );
         })}
+      </ul>
+    </Card>
+  );
+}
+
+type Announcement = { name: string; title: string; message: string; creation: string };
+
+function Announcements() {
+  const news = useQuery({ queryKey: ["announcements"], queryFn: () => call<Announcement[]>("staffdock.api.announcements", { limit: 3 }) });
+  if (!news.data?.length) return null;
+  return (
+    <Card title="Announcements">
+      <ul className="divide-y divide-border">
+        {news.data.map((a) => (
+          <li key={a.name} className="py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-sm font-semibold">{a.title}</p>
+              <span className="text-xs whitespace-nowrap text-muted-foreground">{formatDate(a.creation)}</span>
+            </div>
+            <div className="rich mt-1 text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: a.message }} />
+          </li>
+        ))}
       </ul>
     </Card>
   );

@@ -105,6 +105,7 @@ def run(password):
 
 	seed_inventory(abbr)
 	seed_leave(employee_by_email.values())
+	seed_announcements()
 
 	frappe.db.commit()
 	return employee_by_email
@@ -186,6 +187,27 @@ def seed_leave(employees):
 			)
 			allocation.insert()
 			allocation.submit()
+
+
+def seed_announcements():
+	if not frappe.db.exists("Staff Announcement", {"title": "Welcome to StaffDock"}):
+		frappe.get_doc(
+			{
+				"doctype": "Staff Announcement",
+				"title": "Welcome to StaffDock",
+				"message": "<p>Requests, leave, attendance and company news now live in one place.</p>",
+			}
+		).insert()
+	if not frappe.db.exists("Staff Policy", {"title": "Code of Conduct"}):
+		frappe.get_doc(
+			{
+				"doctype": "Staff Policy",
+				"title": "Code of Conduct",
+				"version": "1",
+				"effective_from": f"{YEAR}-01-01",
+				"content": "<p>Treat colleagues with respect, protect company data and report concerns to HR.</p>",
+			}
+		).insert()
 
 
 def seed_inventory(abbr):

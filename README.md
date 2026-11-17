@@ -12,6 +12,9 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
 - **My profile**: see your job details and manager; update phone, personal email, address, emergency contact
   and photo. Everything else stays with HR.
+- **Announcements and policies**: HR posts company news and policies in desk (Staff Announcement, Staff Policy);
+  staff read them in the portal and acknowledge policies. A new policy version asks everyone again, and HR
+  sees who acknowledged in Staff Policy Acknowledgement.
 - **People**: company directory with search, who's out today (from approved leave; the leave type stays
   private) and upcoming public holidays.
 - **Attendance**: check in / check out from the portal (server time only, double clicks ignored),

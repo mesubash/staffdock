@@ -154,6 +154,7 @@ assert any(t["name"] == name for t in ian.api("my_tasks")["to_review"])
 assert ian.act("Material Request", name, "Approve")["workflow_state"] == "Approved"
 assert not emma.ok("POST", "/api/method/staffdock.api.issue_request", {"name": name}), "employee must not issue"
 
+ian.api("receive_stock", item_code="USB-C-CABLE", qty=2, rate=500)  # keep demo stock level across runs
 before = {(b["item_code"], b["warehouse"]): b["actual_qty"] for b in ian.api("stock_levels")}
 entry = ian.api("issue_request", name=name)
 after = {(b["item_code"], b["warehouse"]): b["actual_qty"] for b in ian.api("stock_levels")}
@@ -179,7 +180,8 @@ assert not emma.ok("POST", "/api/method/staffdock.api.discard_request", {"name":
 
 # --- Updates feed tells each person what happened (notifications are written after commit)
 def eventually_updated(session, text):
-	for _ in range(20):
+	# Notifications go through the background worker; under load that can take ~30s
+	for _ in range(90):
 		if any(text in u["subject"] for u in session.api("updates", limit=50)):
 			return True
 		time.sleep(0.5)
@@ -231,6 +233,9 @@ assert ian.get("Asset Movement", ret)["sd_return_condition"] == "Minor Wear"
 assert not ian.get("Asset", asset)["custodian"], "returned asset must have no custodian"
 
 # --- Leave: apply -> manager approves / rejects, withdraw, balance
+DATE_FORMAT = {"dd-mm-yyyy": "%d-%m-%Y", "mm-dd-yyyy": "%m-%d-%Y", "yyyy-mm-dd": "%Y-%m-%d", "dd/mm/yyyy": "%d/%m/%Y", "mm/dd/yyyy": "%m/%d/%Y"}[
+	emma.api("me")["date_format"]
+]
 import datetime
 
 def leave_window(weeks_ahead=1):
@@ -238,6 +243,11 @@ def leave_window(weeks_ahead=1):
 	start = datetime.date.today() + datetime.timedelta(days=7 * weeks_ahead)
 	start -= datetime.timedelta(days=start.weekday())
 	return start.isoformat(), (start + datetime.timedelta(days=1)).isoformat()
+
+
+def fmt(iso):
+	"""Dates in notices use the site's format (dd-mm-yyyy on the demo site)."""
+	return datetime.date.fromisoformat(iso).strftime(DATE_FORMAT)
 
 
 def casual(session):
@@ -263,7 +273,7 @@ assert max.api("decide_leave", name=leave, approve=1) == "Approved"
 after = casual(emma)
 assert after["remaining"] == before["remaining"] - 2 and after["taken"] == before["taken"] + 2, (before, after)
 assert eventually_updated(max, "Emma Employee applied for Casual Leave")
-assert eventually_updated(emma, f"Your Casual Leave from {f} was approved")
+assert eventually_updated(emma, f"Your Casual Leave from {fmt(f)} was approved")
 assert not max.ok("POST", "/api/method/staffdock.api.decide_leave", {"name": leave, "approve": 0}), "decided leave stays decided"
 
 f, t = leave_window(2)
@@ -273,7 +283,7 @@ assert all(a["name"] != gone for a in emma.api("leave_summary")["applications"])
 
 no = emma.api("apply_leave", leave_type="Sick Leave", from_date=f, to_date=t, reason="e2e reject")
 assert max.api("decide_leave", name=no, approve=0) == "Rejected"
-assert eventually_updated(emma, f"Your Sick Leave from {f} was rejected")
+assert eventually_updated(emma, f"Your Sick Leave from {fmt(f)} was rejected")
 
 try:
 	f3, _ = leave_window(3)
@@ -333,5 +343,27 @@ if datetime.date.today().weekday() < 5:
 	assert any(o["employee_name"] == "Emma Employee" for o in out) and all("leave_type" not in o for o in out), out
 	hana.call("POST", "/api/method/frappe.client.cancel", {"doctype": "Leave Application", "name": away})
 	assert all(o["employee_name"] != "Emma Employee" for o in olivia.api("people")["out_today"])
+
+# --- Announcements and policies
+assert any(a["title"] == "Welcome to StaffDock" for a in emma.api("announcements"))
+assert not emma.ok("POST", "/api/resource/Staff Announcement", {"title": "x", "message": "x"}), "staff can't post announcements"
+bad = hana.call("POST", "/api/resource/Staff Announcement", {"title": "e2e html", "message": "<p>hi</p><script>alert(1)</script>"})
+assert all("<script" not in a["message"] for a in emma.api("announcements", limit=20)), "announcement HTML is sanitized"
+hana.call("DELETE", f"/api/resource/Staff Announcement/{bad['name']}")
+
+conduct = next(p for p in emma.api("policies") if p["title"] == "Code of Conduct")
+if conduct["acknowledged"]:  # a previous run acknowledged it: HR publishes a new version
+	hana.call("PUT", f"/api/resource/Staff Policy/{conduct['name']}", {"version": str(int(conduct["version"]) + 1)})
+assert any(p["name"] == conduct["name"] for p in emma.api("my_tasks")["policies_to_acknowledge"]), "policy is a to-do"
+emma.api("acknowledge_policy", name=conduct["name"])
+emma.api("acknowledge_policy", name=conduct["name"])  # twice is harmless
+assert next(p for p in emma.api("policies") if p["name"] == conduct["name"])["acknowledged"]
+assert all(p["name"] != conduct["name"] for p in emma.api("my_tasks")["policies_to_acknowledge"])
+acks = hana.call("GET", "/api/resource/Staff Policy Acknowledgement?filters=" + urllib.request.quote(json.dumps([["policy", "=", conduct["name"]], ["employee", "=", emma_emp]])) + "&fields=" + urllib.request.quote('["version"]'))
+assert len([a for a in acks if a["version"] == next(p for p in emma.api("policies") if p["name"] == conduct["name"])["version"]]) == 1, acks
+version = next(p for p in emma.api("policies") if p["name"] == conduct["name"])["version"]
+hana.call("PUT", f"/api/resource/Staff Policy/{conduct['name']}", {"version": str(int(version) + 1)})
+assert any(p["name"] == conduct["name"] for p in emma.api("my_tasks")["policies_to_acknowledge"]), "new version asks again"
+assert not emma.ok("POST", "/api/resource/Staff Policy Acknowledgement", {"policy": conduct["name"], "version": "99", "employee": emma_emp}), "acks only through the portal"
 
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

@@ -284,7 +284,7 @@ def setup_notifications():
 			None,
 			"doc.leave_approver",
 			{"receiver_by_document_field": "leave_approver"},
-			"{{ doc.employee_name }} applied for {{ doc.leave_type }} from {{ doc.from_date }}",
+			"{{ doc.employee_name }} applied for {{ doc.leave_type }} from {{ frappe.utils.formatdate(doc.from_date) }}",
 		),
 		(
 			"Leave Decision",
@@ -293,7 +293,7 @@ def setup_notifications():
 			"status",
 			"doc.status in ('Approved', 'Rejected')",
 			{"receiver_by_document_field": "owner"},
-			"Your {{ doc.leave_type }} from {{ doc.from_date }} was {{ doc.status | lower }}",
+			"Your {{ doc.leave_type }} from {{ frappe.utils.formatdate(doc.from_date) }} was {{ doc.status | lower }}",
 		),
 	]
 	for name, doctype, event, field, condition, recipient, subject in notifications:

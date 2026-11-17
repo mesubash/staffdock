@@ -1,57 +1,88 @@
 # StaffDock
 
-**Open-source employee management system (EMS) for Frappe / ERPNext.**
-A simple, role-based staff portal for requests, approvals, assets and inventory, on top of ERPNext and Frappe HR.
+[![CI](https://github.com/mesubash/staffdock/actions/workflows/ci.yml/badge.svg)](https://github.com/mesubash/staffdock/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-Employees get one clean place for everyday work; HR and admins keep the full ERPNext desk.
+**Open-source employee management system (EMS) for Frappe / ERPNext.**
+
+StaffDock gives every employee one simple portal for everyday work: attendance, leave, expenses, item
+requests, company assets, the people directory and company policies. Managers approve from the same place.
+HR and admins keep the full ERPNext / Frappe HR desk behind it.
+
+ERPNext is powerful, but its desk is too much for someone who just wants to apply for leave. StaffDock keeps
+the data in ERPNext and Frappe HR, and puts a small, role-aware portal in front of it.
 
 ## Features
 
-- **Staff portal** (`/staff`): see what's waiting on you, nothing else. Sign-in uses Frappe's own login
-  (password reset, 2FA, and "Sign in with …" through any OAuth/OIDC provider via Social Login Keys).
-- **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
-- **My profile and documents**: see your job details and manager; update phone, personal email, address,
-  emergency contact and photo (everything else stays with HR). Files HR attaches to your employee record
-  (contracts, letters) are listed for download and stay private to you.
-- **Expenses**: claim one or more expenses with a receipt; the manager approves or rejects in the portal and
-  finance pays approved claims in desk as usual (Frappe HR Expense Claim). Receipts stay private to the
-  employee, the approver and finance.
-- **Announcements and policies**: HR posts company news and policies in desk (Staff Announcement, Staff Policy);
-  staff read them in the portal and acknowledge policies. A new policy version asks everyone again, and HR
-  sees who acknowledged in Staff Policy Acknowledgement.
-- **People**: company directory with search, who's out today (from approved leave; the leave type stays
-  private) and upcoming public holidays.
-- **Attendance**: check in / check out from the portal (server time only, double clicks ignored),
-  hours today and the last 30 days. Stored as Frappe HR Employee Checkins; optional location when HR enables it.
-- **Leave**: balances, apply (incl. half day), manager approves or rejects, withdraw while pending.
-  Built on Frappe HR Leave Application, so allocations, holidays and HR reports work as usual.
-- **Assets**: issue company property to an employee, they confirm receipt, receive it back with its condition.
-- **Inventory**: review and issue requests, stock levels, receive stock.
-- **History** on every request: who did what, when.
-- **Only the buttons you can use**: actions come from the workflow, so people never see options they can't take.
-- **Light and dark**: the portal follows the device's light/dark setting; keyboard focus is always visible and
-  there is a skip-to-content link.
-- **Clear feedback**: a short confirmation after every action, and a second click to confirm reject, withdraw,
-  discard and close.
-- **Row-level access**: employees see only their own records, managers their team's.
-- **Company domain lock**: only accounts on your email domain can exist (optional).
+**For employees**
+- **Home**: check in/out, what's waiting on you, company announcements and recent updates.
+- **Attendance**: check in and out (server time only, double clicks ignored), hours today and the last 30 days.
+- **Leave**: balances, apply (including half days), withdraw while pending.
+- **Expenses**: claim several expenses at once with a private receipt; follow them to paid.
+- **Requests and assets**: request items from stores, confirm what you received, see company property you hold.
+- **People**: directory with search, who's out today (the leave type stays private), upcoming holidays.
+- **Policies**: read and acknowledge company policies; a new version asks again.
+- **My profile**: job details and manager, update your contact and emergency details and photo, download
+  documents HR shares with you.
 
-Built on standard ERPNext doctypes (Material Request, Stock Entry, Asset, Asset Movement) and Frappe workflows,
-so stock and asset history stay in ERPNext's ledgers.
+**For managers**
+- **Approvals**: leave, expenses and item requests from your team in one list, with receipts and history.
+
+**For inventory staff**
+- Review and issue requests, issue company assets and receive them back with their condition, stock levels,
+  receive stock, close requests that can't be fulfilled.
+
+**For HR and admins**
+- Everything stays in ERPNext and Frappe HR: allocations, holidays, payroll, accounting and reports work as usual.
+- Post announcements and policies in desk and see who acknowledged.
+- One settings page for branding, an optional company email-domain lock, email notifications and feature switches.
+
+**Throughout**
+- Only the buttons you can use: actions come from the workflow, so nobody sees options they can't take.
+- Row-level access: employees see their own records, managers their team's.
+- A history on every request, in-app notifications and optional email.
+- Light and dark mode, phone friendly, keyboard accessible.
+
+## How it works
+
+```
+Staff portal (/staff)          React + Vite, one page app served by Frappe
+        │  calls
+staffdock.api                  thin, permission-checked endpoints
+        │  uses
+ERPNext + Frappe HR            Material Request, Stock Entry, Asset, Asset Movement,
+                               Leave Application, Employee Checkin, Expense Claim, Employee
+```
+
+StaffDock adds custom fields, roles, workflows and notifications through code (`staffdock/setup.py`, applied on
+every `bench migrate`) and never modifies Frappe, ERPNext or Frappe HR. Stock, asset, leave and expense records
+stay in ERPNext's own ledgers.
 
 ## Roles
 
-| Role | Uses | Sees |
+| Role | Uses | Gets |
 |---|---|---|
-| Employee | Portal only (no desk) | Own requests and assets; confirm receipts |
-| Manager (anyone with reportees or set as leave approver) | Portal | + team approvals (requests and leave) |
-| Inventory | Portal | + review/issue requests, issue/receive assets, stock levels, receive stock |
-| HR (HR Manager / HR User) | Portal + desk (Frappe HR) | HR records and settings |
+| Employee | Portal only (no desk) | Their own attendance, leave, expenses, requests, assets, profile |
+| Manager (has reportees, or set as leave/expense approver) | Portal | + Approvals for their team |
+| Inventory | Portal | + Inventory: requests to review and issue, assets, stock |
+| HR (HR Manager / HR User) | Portal + desk (Frappe HR) | HR records, announcements, policies |
 | Admin (System Manager) | Portal + desk (ERPNext + Frappe HR) | Everything |
+
+## Install
+
+Requires Frappe v16, ERPNext v16 and Frappe HR v16 on an existing bench.
+
+```sh
+bench get-app https://github.com/mesubash/staffdock
+bench --site <site> install-app staffdock
+```
+
+`bench get-app` builds the portal during the normal asset build (it uses the Node and yarn every bench already
+has). Staff then use `https://<site>/staff`.
 
 ## Configure
 
-**StaffDock Settings** (desk → search "StaffDock Settings"):
+Desk → search **StaffDock Settings**:
 
 | Setting | Effect |
 |---|---|
@@ -59,85 +90,59 @@ so stock and asset history stay in ERPNext's ledgers.
 | Company Email Domain | Only accounts on this email domain can be created |
 | Default Store | Warehouse used for requests, issues and receipts |
 | Send Email Notifications | Also email every portal notice (needs a default outgoing Email Account) |
-| Features | Switch off Requests/Assets/Inventory, Attendance, Leave, Expenses, People or Announcements/Policies; they disappear from the portal |
+| Features | Switch off Requests/Assets/Inventory, Attendance, Leave, Expenses, People or Announcements/Policies |
 
-## Single sign-on
+Leave and expenses go to the employee's reporting manager unless HR sets a different approver on the employee.
 
-StaffDock has no login code of its own. To let staff sign in with Google, Microsoft or your own
-identity provider, add a **Social Login Key** in desk (any standard OAuth 2.0 / OpenID Connect provider);
-the button appears on the sign-in page.
+### Single sign-on
 
-## Install
-
-Requires Frappe v16, ERPNext v16 and Frappe HR v16.
-
-```sh
-bench get-app https://github.com/mesubash/staffdock
-bench --site <site> install-app staffdock
-```
-
-`bench get-app` builds the staff portal as part of the normal asset build (it needs Node and yarn,
-which every Frappe bench already has). The portal is at `https://<site>/staff`.
+StaffDock has no login code of its own; it uses Frappe's sign-in page. To let staff sign in with Google,
+Microsoft or your own identity provider, add a **Social Login Key** in desk (any standard OAuth 2.0 / OpenID
+Connect provider) and the button appears on the sign-in page.
 
 ## Development
 
-Docker dev environment (MariaDB 11.8, Redis, frappe/bench):
+The Docker setup includes MariaDB, Redis, a Frappe bench container and Mailpit (catches outgoing mail).
 
 ```sh
 docker compose -f compose.dev.yml up -d
-docker compose -f compose.dev.yml exec frappe bash
+docker compose -f compose.dev.yml exec frappe bash /workspace/scripts/dev-setup.sh
+docker compose -f compose.dev.yml exec -w /workspace/development/frappe-bench frappe bench start
 ```
 
-First time, inside the container (from `/workspace/development`):
+`dev-setup.sh` creates the bench, links this checkout into it, creates the `staffdock.localhost` site and
+seeds a demo company (Acme Corp) with one user per role: `emma@example.com` (employee), `max@` (her manager),
+`ian@` (inventory), `olivia@` (another team) and `hana@` (HR). Passwords are written to
+`development/site-credentials.txt`.
+
+- Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk
+- Mail: http://localhost:8025
+- Portal with hot reload: `yarn install && yarn dev`, then http://staffdock.localhost:8080/staff
+  (set `ignore_csrf: 1` in the site config)
+
+### Tests
+
+`scripts/e2e_check.py` drives every role through attendance, leave, expenses, requests, assets, people,
+policies, notifications and the access rules against the running site. CI runs it on a fresh bench for every
+push.
 
 ```sh
-bench init --skip-redis-config-generation --frappe-branch version-16 --python python3.14 frappe-bench
-cd frappe-bench
-bench set-config -g db_host mariadb
-bench set-config -g redis_cache redis://redis-cache:6379
-bench set-config -g redis_queue redis://redis-queue:6379
-bench set-config -g redis_socketio redis://redis-queue:6379
-bench get-app --branch version-16 erpnext
-bench get-app --branch version-16 hrms
-ln -s ../../.. apps/staffdock && echo staffdock >> sites/apps.txt
-uv pip install -e apps/staffdock --python env/bin/python
-bench new-site staffdock.localhost --db-root-password 123 --admin-password <choose> --mariadb-user-host-login-scope=%
-bench --site staffdock.localhost install-app erpnext hrms staffdock
-bench --site staffdock.localhost set-config developer_mode 1
-bench use staffdock.localhost
-bench --site staffdock.localhost execute staffdock.dev_seed.run --kwargs '{"password": "<demo password>"}'
-bench start
+python3 scripts/e2e_check.py
 ```
 
-The seed runs the setup wizard (Acme Corp), adds a holiday list with a few public holidays, leave allocations
-and expense accounts, and creates one demo user per role:
-`emma@example.com` (employee), `max@` (her manager), `ian@` (inventory), `olivia@` (another team), `hana@` (HR).
-
-Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk ·
-Dev mail (Mailpit): http://localhost:8025 — the seed points outgoing email there.
-
-Portal with hot reload: `yarn install && yarn dev` (repo root), open http://staffdock.localhost:8080/staff
-(set `ignore_csrf: 1` in the dev site config).
-
-### End-to-end check
-
-Runs every role through the full request and asset flow, plus the access rules:
-
-```sh
-python3 scripts/e2e_check.py   # reads test_password from development/site-credentials.txt
-```
-
-## Layout
+## Project layout
 
 ```
-staffdock/            Frappe app (hooks, API, permissions, workflows, settings)
+staffdock/            Frappe app: API, permissions, workflows, settings, doctypes, setup
 portal/               Staff portal (React + Vite), built into staffdock/public/portal
-scripts/e2e_check.py  End-to-end check
-compose.dev.yml       Dev containers
+scripts/              dev-setup.sh and the end-to-end check
+compose.dev.yml       Development containers
 ```
 
-Configuration (custom fields, roles, permissions, workflows, notifications) lives in `staffdock/setup.py`
-and is applied on every `bench migrate`. Upstream Frappe / ERPNext / HRMS code is never modified.
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and, for security issues,
+[SECURITY.md](SECURITY.md).
 
 ## License
 

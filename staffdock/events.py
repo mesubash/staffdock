@@ -59,9 +59,11 @@ HR_ROLES = {"HR Manager", "HR User", "System Manager"}
 
 
 def employee_validate(doc, method=None):
-	"""The reporting manager approves leave unless HR set a different leave approver."""
-	if doc.reports_to and not doc.leave_approver:
-		doc.leave_approver = frappe.db.get_value("Employee", doc.reports_to, "user_id")
+	"""The reporting manager approves leave and expenses unless HR set different approvers."""
+	if doc.reports_to:
+		manager_user = frappe.db.get_value("Employee", doc.reports_to, "user_id")
+		doc.leave_approver = doc.leave_approver or manager_user
+		doc.expense_approver = doc.expense_approver or manager_user
 	if doc.user_id and HR_ROLES & set(frappe.get_roles(doc.user_id)):
 		# ERPNext removes the existing "own record only" user permission when this changes
 		doc.create_user_permission = 0

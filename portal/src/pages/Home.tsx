@@ -6,6 +6,7 @@ import { Card, Empty, ErrorText, Page, Skeleton, StatusBadge, formatDate } from 
 import { Button } from "@/components/ui/button";
 import { call, type Tasks } from "@/lib/api";
 import { CheckInCard } from "@/pages/Attendance";
+import { money } from "@/pages/Expenses";
 import { leaveDates } from "@/pages/Leave";
 import { useMe } from "@/lib/session";
 
@@ -49,6 +50,12 @@ export function Home() {
           to: "/policies",
           title: `Read and acknowledge: ${p.title}`,
           detail: `Version ${p.version}`,
+        })),
+        ...t.expenses_to_approve.map((c) => ({
+          key: `expense-${c.name}`,
+          to: "/approvals",
+          title: `Approve ${c.employee_name}'s expense claim`,
+          detail: money(c.total_claimed_amount, c.currency),
         })),
         ...t.leaves_to_approve.map((l) => ({
           key: `leave-${l.name}`,

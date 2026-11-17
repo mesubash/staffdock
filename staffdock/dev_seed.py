@@ -106,6 +106,7 @@ def run(password):
 	seed_inventory(abbr)
 	seed_leave(employee_by_email.values())
 	seed_announcements()
+	seed_expenses(abbr)
 
 	frappe.db.commit()
 	return employee_by_email
@@ -187,6 +188,29 @@ def seed_leave(employees):
 			)
 			allocation.insert()
 			allocation.submit()
+
+
+# expense type -> expense account (without the company suffix)
+EXPENSE_ACCOUNTS = {
+	"Travel": "Travel Expenses",
+	"Calls": "Telephone Expenses",
+	"Food": "Entertainment Expenses",
+	"Medical": "Miscellaneous Expenses",
+	"Others": "Miscellaneous Expenses",
+}
+
+
+def seed_expenses(abbr):
+	company = frappe.get_doc("Company", COMPANY)
+	if not company.default_expense_claim_payable_account:
+		company.db_set("default_expense_claim_payable_account", company.default_payable_account)
+	for expense_type, account in EXPENSE_ACCOUNTS.items():
+		if not frappe.db.exists("Expense Claim Type", expense_type):
+			continue
+		doc = frappe.get_doc("Expense Claim Type", expense_type)
+		if not any(a.company == COMPANY for a in doc.accounts):
+			doc.append("accounts", {"company": COMPANY, "default_account": f"{account} - {abbr}"})
+			doc.save()
 
 
 def seed_announcements():

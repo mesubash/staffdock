@@ -5,6 +5,7 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { call, getList, type RequestRow } from "@/lib/api";
 import { useMe } from "@/lib/session";
+import { type Claim, ClaimLines, money } from "@/pages/Expenses";
 import { type LeaveRow, leaveDates } from "@/pages/Leave";
 import { RequestTable } from "@/pages/Requests";
 
@@ -44,13 +45,23 @@ export function Approvals() {
     },
   });
 
-  const loaded = leaves.data && requests.data;
-  const nothing = loaded && !leaves.data.length && !requests.data.length;
+  const expenses = useQuery({ queryKey: ["expenses-to-approve"], queryFn: () => call<Claim[]>("staffdock.api.expenses_to_approve") });
+  const decideExpense = useMutation({
+    mutationFn: ({ name, approve }: { name: string; approve: boolean }) =>
+      call("staffdock.api.decide_expense", { name, approve: approve ? 1 : 0 }),
+    onSuccess: (_, { approve }) => {
+      queryClient.invalidateQueries();
+      toast(approve ? "Claim approved" : "Claim rejected");
+    },
+  });
+
+  const loaded = leaves.data && requests.data && expenses.data;
+  const nothing = loaded && !leaves.data.length && !requests.data.length && !expenses.data.length;
 
   return (
     <Page title="Approvals">
-      <ErrorText error={leaves.error ?? requests.error ?? decide.error} />
-      {!loaded && !leaves.error && !requests.error ? <Skeleton /> : null}
+      <ErrorText error={leaves.error ?? requests.error ?? expenses.error ?? decide.error ?? decideExpense.error} />
+      {!loaded && !leaves.error && !requests.error && !expenses.error ? <Skeleton /> : null}
       {nothing ? (
         <Card>
           <Empty>Nothing waiting for your approval.</Empty>
@@ -75,6 +86,32 @@ export function Approvals() {
                 <ConfirmButton size="sm" confirmLabel="Click again to reject" disabled={decide.isPending} onConfirm={() => decide.mutate({ name: l.name, approve: false })}>
                   Reject
                 </ConfirmButton>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
+      {expenses.data?.length ? (
+        <Card title="Expenses">
+          <ul className="divide-y divide-border">
+            {expenses.data.map((c) => (
+              <li key={c.name} className="py-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="min-w-48 flex-1">
+                    <p className="text-sm font-medium">
+                      {c.employee_name} · {money(c.total_claimed_amount, c.currency)}
+                    </p>
+                    {c.remark ? <p className="text-sm text-muted-foreground">{c.remark}</p> : null}
+                  </div>
+                  <Button size="sm" disabled={decideExpense.isPending} onClick={() => decideExpense.mutate({ name: c.name, approve: true })}>
+                    Approve
+                  </Button>
+                  <ConfirmButton size="sm" confirmLabel="Click again to reject" disabled={decideExpense.isPending} onConfirm={() => decideExpense.mutate({ name: c.name, approve: false })}>
+                    Reject
+                  </ConfirmButton>
+                </div>
+                <ClaimLines claim={c} />
               </li>
             ))}
           </ul>

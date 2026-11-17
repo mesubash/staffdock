@@ -12,6 +12,7 @@ import { MeContext } from "@/lib/session";
 import { Approvals } from "@/pages/Approvals";
 import { Attendance } from "@/pages/Attendance";
 import { MyAssets } from "@/pages/Assets";
+import { Expenses } from "@/pages/Expenses";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
 import { Leave } from "@/pages/Leave";
@@ -44,6 +45,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: "/requests/new", component: RequestNew }),
   createRoute({ getParentRoute: () => root, path: "/requests/$name", component: RequestDetail }),
   createRoute({ getParentRoute: () => root, path: "/leave", component: Leave }),
+  createRoute({ getParentRoute: () => root, path: "/expenses", component: Expenses }),
   createRoute({ getParentRoute: () => root, path: "/attendance", component: Attendance }),
   createRoute({ getParentRoute: () => root, path: "/profile", component: ProfilePage }),
   createRoute({ getParentRoute: () => root, path: "/people", component: People }),

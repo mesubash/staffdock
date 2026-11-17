@@ -132,7 +132,7 @@ export type Me = {
   image?: string | null;
   employee: { name: string; employee_name: string; department: string } | null;
   is_manager: boolean;
-  is_leave_approver: boolean;
+  is_approver: boolean;
   is_inventory: boolean;
   has_desk: boolean;
   default_warehouse: string;
@@ -154,6 +154,7 @@ export type Tasks = {
   open_requests: number;
   my_assets: number;
   leaves_to_approve: import("@/pages/Leave").LeaveRow[];
+  expenses_to_approve: { name: string; employee_name: string; total_claimed_amount: number; currency: string }[];
   policies_to_acknowledge: { name: string; title: string; version: string }[];
   to_review?: RequestRow[];
   to_issue?: RequestRow[];

@@ -12,6 +12,9 @@ Employees get one clean place for everyday work; HR and admins keep the full ERP
 - **Item requests**: employee → manager → inventory → issue from store → employee confirms receipt.
 - **My profile**: see your job details and manager; update phone, personal email, address, emergency contact
   and photo. Everything else stays with HR.
+- **Expenses**: claim one or more expenses with a receipt; the manager approves or rejects in the portal and
+  finance pays approved claims in desk as usual (Frappe HR Expense Claim). Receipts stay private to the
+  employee, the approver and finance.
 - **Announcements and policies**: HR posts company news and policies in desk (Staff Announcement, Staff Policy);
   staff read them in the portal and acknowledge policies. A new policy version asks everyone again, and HR
   sees who acknowledged in Staff Policy Acknowledgement.
@@ -101,7 +104,8 @@ bench --site staffdock.localhost execute staffdock.dev_seed.run --kwargs '{"pass
 bench start
 ```
 
-The seed runs the setup wizard (Acme Corp), adds a holiday list with a few public holidays and leave allocations, and creates one demo user per role:
+The seed runs the setup wizard (Acme Corp), adds a holiday list with a few public holidays, leave allocations
+and expense accounts, and creates one demo user per role:
 `emma@example.com` (employee), `max@` (her manager), `ian@` (inventory), `olivia@` (another team), `hana@` (HR).
 
 Portal: http://staffdock.localhost:8000/staff · Desk: http://staffdock.localhost:8000/desk

@@ -265,7 +265,7 @@ before = casual(emma)
 f, t = leave_window(1)
 leave = emma.api("apply_leave", leave_type="Casual Leave", from_date=f, to_date=t, reason="e2e leave")
 assert any(l["name"] == leave for l in max.api("my_tasks")["leaves_to_approve"]), "manager sees leave in tasks"
-assert max.api("me")["is_leave_approver"]
+assert max.api("me")["is_approver"]
 assert not emma.ok("POST", "/api/method/staffdock.api.decide_leave", {"name": leave, "approve": 1}), "no self-approval"
 assert not olivia.ok("POST", "/api/method/staffdock.api.decide_leave", {"name": leave, "approve": 1}), "only the approver decides"
 assert not olivia.ok("POST", "/api/method/staffdock.api.withdraw_leave", {"name": leave}), "only the employee withdraws"
@@ -365,5 +365,34 @@ version = next(p for p in emma.api("policies") if p["name"] == conduct["name"])[
 hana.call("PUT", f"/api/resource/Staff Policy/{conduct['name']}", {"version": str(int(version) + 1)})
 assert any(p["name"] == conduct["name"] for p in emma.api("my_tasks")["policies_to_acknowledge"]), "new version asks again"
 assert not emma.ok("POST", "/api/resource/Staff Policy Acknowledgement", {"policy": conduct["name"], "version": "99", "employee": emma_emp}), "acks only through the portal"
+
+# --- Expenses: claim with receipt -> manager approves / rejects, withdraw, privacy
+types = emma.api("my_expenses")["types"]
+assert "Travel" in types, types
+receipt = emma.upload("taxi-receipt.png", PNG, is_private=1)
+day = datetime.date.today().isoformat()
+lines = [{"expense_date": day, "expense_type": "Travel", "amount": 42.5, "description": "Taxi"}, {"expense_date": day, "expense_type": "Food", "amount": 17.5, "description": "Lunch"}]
+claim = emma.api("submit_expense", lines=lines, remark="e2e claim", receipt_url=receipt)
+pending = {c["name"]: c for c in max.api("expenses_to_approve")}
+assert claim in pending and pending[claim]["total_claimed_amount"] == 60 and pending[claim]["receipts"], pending.get(claim)
+assert any(c["name"] == claim for c in max.api("my_tasks")["expenses_to_approve"])
+assert olivia.status(receipt)[0] in (403, 404), "others can't open the receipt"
+assert max.status(receipt)[0] == 200, "approver can open the receipt"
+assert not emma.ok("POST", "/api/method/staffdock.api.decide_expense", {"name": claim, "approve": 1}), "no self-approval"
+assert not olivia.ok("POST", "/api/method/staffdock.api.decide_expense", {"name": claim, "approve": 1}), "only the approver decides"
+assert not olivia.ok("POST", "/api/method/staffdock.api.withdraw_expense", {"name": claim}), "only the employee withdraws"
+assert max.api("decide_expense", name=claim, approve=1) == "Approved"
+mine = {c["name"]: c for c in emma.api("my_expenses")["claims"]}
+assert mine[claim]["approval_status"] == "Approved" and mine[claim]["docstatus"] == 1 and mine[claim]["status"] == "Unpaid", mine[claim]
+no = emma.api("submit_expense", lines=[lines[0]], remark="e2e reject")
+assert max.api("decide_expense", name=no, approve=0) == "Rejected"
+gone = emma.api("submit_expense", lines=[lines[1]], remark="e2e withdraw")
+emma.api("withdraw_expense", name=gone)
+assert gone not in {c["name"] for c in emma.api("my_expenses")["claims"]}
+try:
+	max.api("submit_expense", lines=[lines[0]])
+	raise AssertionError("someone without a manager must be told to ask HR")
+except urllib.error.HTTPError as err:
+	assert "approver" in err.msg, err.msg
 
 print(f"OK  request {name} (stock entry {entry}), rejected {rej['name']}, asset {asset} issued {move} returned {ret}, leave {leave}")

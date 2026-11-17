@@ -39,7 +39,10 @@ def me():
 		"image": (employee and employee.image) or frappe.db.get_value("User", user, "user_image"),
 		"employee": employee,
 		"is_manager": bool(employee and frappe.db.exists("Employee", {"reports_to": employee.name, "status": "Active"})),
-		"is_leave_approver": bool(frappe.db.exists("Employee", {"leave_approver": user, "status": "Active"})),
+		"is_approver": bool(
+			frappe.db.exists("Employee", {"leave_approver": user, "status": "Active"})
+			or frappe.db.exists("Employee", {"expense_approver": user, "status": "Active"})
+		),
 		"is_inventory": INVENTORY in roles,
 		"has_desk": frappe.db.get_value("User", user, "user_type") == "System User",
 		"default_warehouse": _default_warehouse(),
@@ -187,6 +190,11 @@ def my_tasks():
 		),
 		"my_assets": frappe.db.count("Asset", {"custodian": employee}) if employee else 0,
 		"leaves_to_approve": leaves_to_approve(),
+		"expenses_to_approve": frappe.get_all(
+			"Expense Claim",
+			filters={"expense_approver": user, "approval_status": "Draft", "docstatus": 0},
+			fields=["name", "employee_name", "total_claimed_amount", "currency"],
+		),
 		"policies_to_acknowledge": _policies_to_acknowledge(employee),
 	}
 	if INVENTORY in frappe.get_roles():
@@ -665,3 +673,138 @@ def acknowledge_policy(name):
 			}
 		).insert(ignore_permissions=True)
 	return True
+
+
+# --- Expenses (Frappe HR Expense Claim). Finance pays approved claims in desk as usual.
+
+EXPENSE_FIELDS = [
+	"name",
+	"employee_name",
+	"posting_date",
+	"total_claimed_amount",
+	"total_sanctioned_amount",
+	"approval_status",
+	"status",
+	"docstatus",
+	"remark",
+	"currency",
+	"expense_approver",
+]
+
+
+def _with_lines(claims):
+	for c in claims:
+		c.lines = frappe.get_all(
+			"Expense Claim Detail",
+			filters={"parent": c.name},
+			fields=["expense_date", "expense_type", "description", "amount"],
+			order_by="idx asc",
+		)
+		c.receipts = frappe.get_all(
+			"File",
+			filters={"attached_to_doctype": "Expense Claim", "attached_to_name": c.name},
+			fields=["file_name", "file_url"],
+		)
+	return claims
+
+
+@frappe.whitelist()
+def my_expenses():
+	return {
+		"types": frappe.get_all("Expense Claim Type", pluck="name", order_by="name asc"),
+		"claims": _with_lines(
+			frappe.get_all(
+				"Expense Claim",
+				filters={"employee": _my_employee(), "docstatus": ["<", 2]},
+				fields=EXPENSE_FIELDS,
+				order_by="creation desc",
+				limit=50,
+			)
+		),
+	}
+
+
+@frappe.whitelist()
+def submit_expense(lines, remark="", receipt_url=None):
+	"""Create a claim for the current employee; it waits for their expense approver."""
+	from hrms.hr.doctype.expense_claim.expense_claim import get_default_payable_account
+
+	employee = frappe.get_doc("Employee", _my_employee())
+	lines = frappe.parse_json(lines) or []
+	if not lines:
+		frappe.throw(_("Add at least one expense."))
+	approver = employee.expense_approver or (
+		employee.reports_to and frappe.db.get_value("Employee", employee.reports_to, "user_id")
+	)
+	if not approver:
+		frappe.throw(_("You have no expense approver. Ask HR to set your manager."))
+	cost_center = frappe.get_cached_value("Company", employee.company, "cost_center")
+	claim = frappe.get_doc(
+		{
+			"doctype": "Expense Claim",
+			"employee": employee.name,
+			"company": employee.company,
+			"expense_approver": approver,
+			"approval_status": "Draft",
+			"remark": remark,
+			"payable_account": get_default_payable_account(employee.company),
+			"expenses": [
+				{
+					"expense_date": line.get("expense_date"),
+					"expense_type": line.get("expense_type"),
+					"description": line.get("description"),
+					"amount": flt(line.get("amount")),
+					"cost_center": cost_center,
+				}
+				for line in lines
+			],
+		}
+	)
+	claim.insert()
+	if receipt_url:
+		_attach_own_file(receipt_url, "Expense Claim", claim.name)
+	return claim.name
+
+
+def _attach_own_file(file_url, doctype, name):
+	file = frappe.db.get_value("File", {"file_url": file_url, "owner": frappe.session.user, "attached_to_name": ["is", "not set"]})
+	if not file:
+		frappe.throw(_("Upload the receipt again."))
+	frappe.db.set_value("File", file, {"attached_to_doctype": doctype, "attached_to_name": name})
+
+
+@frappe.whitelist()
+def withdraw_expense(name):
+	claim = frappe.get_doc("Expense Claim", name)
+	if claim.employee != _my_employee() or claim.docstatus != 0 or claim.approval_status != "Draft":
+		frappe.throw(_("Only your own undecided claims can be withdrawn."), frappe.PermissionError)
+	frappe.delete_doc("Expense Claim", name, ignore_permissions=True)
+
+
+@frappe.whitelist()
+def expenses_to_approve():
+	return _with_lines(
+		frappe.get_all(
+			"Expense Claim",
+			filters={"expense_approver": frappe.session.user, "approval_status": "Draft", "docstatus": 0},
+			fields=EXPENSE_FIELDS,
+			order_by="posting_date asc",
+		)
+	)
+
+
+@frappe.whitelist()
+def decide_expense(name, approve):
+	claim = frappe.get_doc("Expense Claim", name)
+	if claim.expense_approver != frappe.session.user:
+		frappe.throw(_("Only the expense approver can decide this claim."), frappe.PermissionError)
+	if claim.docstatus != 0 or claim.approval_status != "Draft":
+		frappe.throw(_("This claim is already decided."))
+	approved = frappe.utils.cint(approve)
+	claim.approval_status = "Approved" if approved else "Rejected"
+	for line in claim.expenses:
+		line.sanctioned_amount = line.amount if approved else 0
+	# Explicit approver check above; approvers can't otherwise reach other employees' records
+	claim.flags.ignore_permissions = True
+	claim.submit()
+	return claim.approval_status
